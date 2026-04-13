@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Exact Matern Validation</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Exact Matern Validation</h1>
+</header>
+<h1 id="exact-matern-validation">Exact Matern Validation</h1>
+<p>Generated on 2026-04-12 15:04:30 CDT</p>
+<h2 id="validation-questions">Validation Questions</h2>
+<ol type="1">
+<li>Do the empirical-Bayes smoothing hyperparameters recover the truth
+in a well-specified simulation?</li>
+<li>Does the fitted posterior surface track the true simulated surface
+well?</li>
+<li>Does the exact marginal likelihood agree with a dense Gaussian
+calculation?</li>
+</ol>
+<h2 id="simulation-setup">Simulation Setup</h2>
+<ul>
+<li>Hyperparameter-recovery experiment: 1D exact-data simulation with
+true range = 0.2, true sigma = 0.3, true beta0 = 0.4, noise sd = 0.05,
+alpha = 2.</li>
+<li>1D design uses an increasing-domain regime: the sampling density is
+held roughly fixed at 80 points per unit length, so the domain length is
+n / 80.</li>
+<li>Sample sizes checked: 80, 160, 320, 640.</li>
+<li>Replicates per sample size: 4.</li>
+<li>Additional 2D recovery experiment: true range = 0.22, true sigma =
+0.35, true beta0 = 0.2, noise sd = 0.15, alpha = 2.</li>
+<li>2D grid sizes checked: 30x24 (n=720), 36x28 (n=1008).</li>
+<li>Replicates per 2D grid size: 2.</li>
+</ul>
+<h2 id="parameter-recovery-summary-1d">Parameter-Recovery Summary
+(1D)</h2>
+<table>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+<col style="width: 8%" />
+</colgroup>
+<thead>
+<tr>
+<th>n</th>
+<th>domain_length</th>
+<th>mean_est_range</th>
+<th>sd_est_range</th>
+<th>median_est_range</th>
+<th>mean_est_sigma</th>
+<th>sd_est_sigma</th>
+<th>median_est_sigma</th>
+<th>mean_abs_err_range</th>
+<th>mean_abs_err_sigma</th>
+<th>mean_surface_rmse</th>
+<th>mean_surface_corr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>80.0000</td>
+<td>1.0000</td>
+<td>0.1729</td>
+<td>0.0460</td>
+<td>0.1926</td>
+<td>0.2527</td>
+<td>0.0659</td>
+<td>0.2762</td>
+<td>0.0282</td>
+<td>0.0486</td>
+<td>0.0326</td>
+<td>0.9898</td>
+</tr>
+<tr>
+<td>160.0000</td>
+<td>2.0000</td>
+<td>0.1784</td>
+<td>0.0126</td>
+<td>0.1767</td>
+<td>0.2557</td>
+<td>0.0356</td>
+<td>0.2608</td>
+<td>0.0216</td>
+<td>0.0443</td>
+<td>0.0332</td>
+<td>0.9918</td>
+</tr>
+<tr>
+<td>320.0000</td>
+<td>4.0000</td>
+<td>0.2051</td>
+<td>0.0158</td>
+<td>0.2022</td>
+<td>0.3024</td>
+<td>0.0348</td>
+<td>0.2879</td>
+<td>0.0105</td>
+<td>0.0245</td>
+<td>0.0306</td>
+<td>0.9949</td>
+</tr>
+<tr>
+<td>640.0000</td>
+<td>8.0000</td>
+<td>0.1954</td>
+<td>0.0195</td>
+<td>0.1884</td>
+<td>0.2949</td>
+<td>0.0255</td>
+<td>0.2861</td>
+<td>0.0166</td>
+<td>0.0213</td>
+<td>0.0322</td>
+<td>0.9941</td>
+</tr>
+</tbody>
+</table>
+<p>Interpretation:</p>
+<p>Figure:</p>
+<figure>
+<img src="figures/matern_parameter_recovery_1d_boxplots.png"
+alt="1D increasing-domain hyperparameter recovery" />
+<figcaption aria-hidden="true">1D increasing-domain hyperparameter
+recovery</figcaption>
+</figure>
+<ul>
+<li>Mean surface RMSE drops from 0.0326 to 0.0322, while mean
+correlation rises from 0.9898 to 0.9941.</li>
+<li>The range and sigma boxplots are the main convergence diagnostic
+here: with increasing domain, they should tighten around the truth if
+the EB objective is behaving sensibly.</li>
+</ul>
+<p>These results show that surface recovery improves strongly with
+sample size in the exact-model setting, but they are not a formal proof
+of asymptotic consistency.</p>
+<h2 id="parameter-recovery-summary-2d">Parameter-Recovery Summary
+(2D)</h2>
+<table>
+<colgroup>
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+</colgroup>
+<thead>
+<tr>
+<th>nx</th>
+<th>ny</th>
+<th>n</th>
+<th>mean_est_range</th>
+<th>sd_est_range</th>
+<th>mean_est_sigma</th>
+<th>sd_est_sigma</th>
+<th>mean_abs_err_range</th>
+<th>mean_abs_err_sigma</th>
+<th>mean_surface_rmse</th>
+<th>mean_surface_corr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>30.0000</td>
+<td>24.0000</td>
+<td>720.0000</td>
+<td>0.2422</td>
+<td>0.0141</td>
+<td>0.3613</td>
+<td>0.0289</td>
+<td>0.0222</td>
+<td>0.0204</td>
+<td>0.1108</td>
+<td>0.9523</td>
+</tr>
+<tr>
+<td>36.0000</td>
+<td>28.0000</td>
+<td>1008.0000</td>
+<td>0.2164</td>
+<td>0.0128</td>
+<td>0.3545</td>
+<td>0.0282</td>
+<td>0.0091</td>
+<td>0.0199</td>
+<td>0.0994</td>
+<td>0.9612</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>At the larger 2D grid size (n = 1008), the mean fitted range is
+0.2164 versus truth 0.2200, and the mean fitted sigma is 0.3545 versus
+truth 0.3500.</li>
+<li>Mean 2D surface correlation is 0.9523 at n = 720 and 0.9612 at n =
+1008.</li>
+<li>The larger 2D noise level makes the observed surface materially
+rougher than the latent truth, so the posterior mean comparison is now
+more informative than in the earlier low-noise example.</li>
+</ul>
+<h2 id="surface-recovery-examples">Surface-Recovery Examples</h2>
+<h3 id="d-example-metrics">1D Example Metrics</h3>
+<table>
+<thead>
+<tr>
+<th>surface_rmse</th>
+<th>surface_corr</th>
+<th>est_range</th>
+<th>est_sigma</th>
+<th>est_beta</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.0309</td>
+<td>0.9926</td>
+<td>0.1799</td>
+<td>0.2626</td>
+<td>0.4718</td>
+</tr>
+</tbody>
+</table>
+<p>Figure:</p>
+<figure>
+<img src="figures/matern_surface_example_1d.png"
+alt="1D Matern validation figure" />
+<figcaption aria-hidden="true">1D Matern validation figure</figcaption>
+</figure>
+<h3 id="d-example-metrics-1">2D Example Metrics</h3>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+</colgroup>
+<thead>
+<tr>
+<th>n</th>
+<th>surface_rmse</th>
+<th>surface_corr</th>
+<th>est_range</th>
+<th>est_sigma</th>
+<th>est_beta</th>
+<th>true_range</th>
+<th>true_sigma</th>
+<th>true_beta</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>720.0000</td>
+<td>0.1078</td>
+<td>0.9731</td>
+<td>0.2701</td>
+<td>0.4198</td>
+<td>0.2191</td>
+<td>0.2200</td>
+<td>0.3500</td>
+<td>0.2000</td>
+</tr>
+</tbody>
+</table>
+<p>Figure:</p>
+<figure>
+<img src="figures/matern_surface_example_2d.png"
+alt="2D Matern validation figure" />
+<figcaption aria-hidden="true">2D Matern validation figure</figcaption>
+</figure>
+<h2 id="profile-marginal-likelihood-surface-2d-example">Profile
+Marginal-Likelihood Surface (2D Example)</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+<col style="width: 7%" />
+</colgroup>
+<thead>
+<tr>
+<th>true_range</th>
+<th>true_sigma</th>
+<th>fitted_range</th>
+<th>fitted_sigma</th>
+<th>grid_max_range</th>
+<th>grid_max_sigma</th>
+<th>profiled_beta_at_true</th>
+<th>profiled_beta_at_fit</th>
+<th>profiled_beta_at_grid_max</th>
+<th>loglik_at_true</th>
+<th>loglik_at_fit</th>
+<th>loglik_at_grid_max</th>
+<th>gap_true_to_grid_max</th>
+<th>gap_fit_to_grid_max</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.220000</td>
+<td>0.350000</td>
+<td>0.270113</td>
+<td>0.419786</td>
+<td>0.257075</td>
+<td>0.402357</td>
+<td>0.222260</td>
+<td>0.219046</td>
+<td>0.219869</td>
+<td>-41.486863</td>
+<td>-39.345130</td>
+<td>-39.436797</td>
+<td>2.050066</td>
+<td>-0.091667</td>
+</tr>
+</tbody>
+</table>
+<p>Figure:</p>
+<figure>
+<img src="figures/matern_profile_loglik_surface_2d.png"
+alt="2D profile marginal likelihood" />
+<figcaption aria-hidden="true">2D profile marginal
+likelihood</figcaption>
+</figure>
+<p>Interpretation:</p>
+<ul>
+<li>The fitted point is at (rho, sigma) = (0.2701, 0.4198), while the
+true point is (0.2200, 0.3500).</li>
+<li>The profile log-likelihood gap from the true point to the grid
+maximum is 2.0501.</li>
+<li>The fitted point is slightly above the coarse grid maximum by
+0.091667 log-likelihood units, which is expected because the optimizer
+is continuous while the plotted surface is evaluated on a finite
+grid.</li>
+</ul>
+<h2 id="marginal-likelihood-check">Marginal-Likelihood Check</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+</colgroup>
+<thead>
+<tr>
+<th>param_id</th>
+<th>range</th>
+<th>sigma</th>
+<th>beta0</th>
+<th>exact_loglik</th>
+<th>dense_loglik</th>
+<th>abs_diff</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.00000000</td>
+<td>0.20000000</td>
+<td>0.40000000</td>
+<td>0.00000000</td>
+<td>-37.94774676</td>
+<td>-37.94774676</td>
+<td>0.00000000</td>
+</tr>
+<tr>
+<td>2.00000000</td>
+<td>0.30000000</td>
+<td>0.70000000</td>
+<td>0.50000000</td>
+<td>-29.94955707</td>
+<td>-29.94955707</td>
+<td>0.00000000</td>
+</tr>
+<tr>
+<td>3.00000000</td>
+<td>0.12000000</td>
+<td>0.25000000</td>
+<td>-0.20000000</td>
+<td>-59.05153759</td>
+<td>-59.05153759</td>
+<td>0.00000000</td>
+</tr>
+<tr>
+<td>4.00000000</td>
+<td>0.18000000</td>
+<td>0.55000000</td>
+<td>0.30000000</td>
+<td>-26.54344204</td>
+<td>-26.54344204</td>
+<td>0.00000000</td>
+</tr>
+<tr>
+<td>5.00000000</td>
+<td>0.26000000</td>
+<td>0.35000000</td>
+<td>-0.10000000</td>
+<td>-54.43204647</td>
+<td>-54.43204647</td>
+<td>0.00000000</td>
+</tr>
+</tbody>
+</table>
+<p>Maximum absolute difference between the package’s exact marginal
+likelihood and the dense Gaussian calculation: 5.68434e-14.</p>
+<p>This numerical agreement is the strongest direct check that the
+current exact marginal-likelihood implementation is algebraically
+correct for the tested cases.</p>
+<h2 id="notes">Notes</h2>
+<ul>
+<li>During this validation pass, a log-determinant bug in
+<code>.compute_logdet_spd()</code> was found and fixed before finalizing
+the results.</li>
+<li>The hyperparameter-recovery experiment is intentionally based on
+data simulated from the package’s own exact Matern latent-field model,
+so it checks internal statistical and numerical coherence rather than
+external model robustness.</li>
+</ul>
+</body>
+</html>

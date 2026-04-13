@@ -1,0 +1,2 @@
+"method","fitted_range","fitted_sigma","fitted_beta","runtime_sec","exact_loglik","posterior_corr_vs_truth","posterior_rmse_vs_truth"
+"Exact EB",0.291350696914766,0.352736373571426,0.195882096157467,14.452,-89.0244045475164,0.906784050119482,0.149820408215882

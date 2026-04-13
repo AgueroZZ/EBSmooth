@@ -1,0 +1,251 @@
+---
+title: "Matern Workflow"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.8
+)
+
+load_ebsmoothr <- function() {
+  if (requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all("../../EBSmoothr", quiet = TRUE, export_all = FALSE)
+    return(invisible(TRUE))
+  }
+  if (requireNamespace("EBSmoothr", quietly = TRUE)) {
+    library(EBSmoothr)
+    return(invisible(TRUE))
+  }
+  stop("Install EBSmoothr or pkgload before rendering this document.")
+}
+
+load_ebsmoothr()
+```
+
+# Overview
+
+`ebnm_Matern_generator()` builds an `ebnm`-compatible smoother using a
+stationary Matern field represented through an INLA/SPDE mesh. The input
+locations may be one-dimensional or two-dimensional.
+
+The current implementation is identity-link only.
+
+There are now two Matern backends:
+
+- If `pc.penalty = NULL`, the fitter uses the exact Gaussian EB backend and
+  optimizes the exact marginal likelihood over `(log(range), log(sigma), beta0)`.
+- If `pc.penalty` is supplied, the fitter switches to an INLA backend with
+  `inla.spde2.pcmatern()`. In that case the main `log_likelihood` is the Step A
+  penalized objective when `fix_g = FALSE`.
+
+# One-Dimensional Example
+
+```{r}
+set.seed(42)
+
+locations_1d <- seq(0, 12, length.out = 120)
+truth_1d <- sin(locations_1d / 1.5) + 0.2 * cos(locations_1d)
+s_1d <- sample(c(0.15, 0.25, 0.35), length(locations_1d), replace = TRUE)
+x_1d <- truth_1d + rnorm(length(locations_1d), sd = s_1d)
+
+fit_fun_1d <- ebnm_Matern_generator(
+  locations = locations_1d,
+  link = "identity"
+)
+
+fit_1d <- fit_fun_1d(x_1d, s_1d)
+
+head(fit_1d$posterior)
+fit_1d$fitted_g
+fit_1d$fitted_beta
+fit_1d$backend
+```
+
+```{r}
+plot(locations_1d, x_1d, pch = 16, cex = 0.45, col = "grey55",
+     xlab = "location", ylab = "x",
+     main = "Matern smoother in one dimension")
+lines(locations_1d, truth_1d, col = "firebrick", lwd = 2, lty = 2)
+lines(locations_1d, fit_1d$posterior$mean, col = "navy", lwd = 2)
+```
+
+# PC-Prior Backend
+
+Supplying `pc.penalty` switches the Matern fitter to an INLA backend. This is
+useful when you want the smoothing hyperparameters to be selected under a PC
+prior rather than under the exact EB objective.
+
+```{r}
+fit_fun_pc <- ebnm_Matern_generator(
+  locations = locations_1d,
+  link = "identity",
+  pc.penalty = list(
+    range = c(1.2, 0.5),
+    sigma = c(0.6, 0.5)
+  )
+)
+
+fit_pc <- fit_fun_pc(x_1d, s_1d)
+pc_breakdown <- matern_objective_breakdown(fit_pc)
+
+fit_pc$backend
+fit_pc$fitted_g
+fit_pc$fitted_beta
+fit_pc$log_likelihood
+fit_pc$log_likelihood_stepA_mlik_integration
+pc_breakdown$objective_integrated_flat_plus_prior
+pc_breakdown$recorded_minus_matched_exact
+```
+
+```{r}
+plot(locations_1d, x_1d, pch = 16, cex = 0.45, col = "grey55",
+     xlab = "location", ylab = "x",
+     main = "Exact EB and PC-prior Matern fits")
+lines(locations_1d, truth_1d, col = "firebrick", lwd = 2, lty = 2)
+lines(locations_1d, fit_1d$posterior$mean, col = "navy", lwd = 2)
+lines(locations_1d, fit_pc$posterior$mean, col = "darkorange3", lwd = 2)
+legend(
+  "topright",
+  legend = c("truth", "exact EB", "INLA PC prior"),
+  col = c("firebrick", "navy", "darkorange3"),
+  lty = c(2, 1, 1),
+  lwd = c(2, 2, 2),
+  bty = "n"
+)
+```
+
+# Fixed Hyperparameters and Fixed Intercept
+
+When `fix_g = TRUE`, the Matern smoother treats both the smoothing
+hyperparameters and the intercept as fixed.
+
+```{r}
+set.seed(99)
+
+fit_fixed <- fit_fun_1d(
+  x_1d,
+  s_1d,
+  g_init = Matern(theta = log(1.2), sigma = 0.7),
+  fix_g = TRUE,
+  beta_fixed = 0.1
+)
+
+fit_fixed$fitted_g
+fit_fixed$fitted_beta
+```
+
+```{r}
+plot(locations_1d, x_1d, pch = 16, cex = 0.45, col = "grey55",
+     xlab = "location", ylab = "x",
+     main = "Matern smoother with fixed hyperparameters")
+lines(locations_1d, truth_1d, col = "firebrick", lwd = 2, lty = 2)
+lines(locations_1d, fit_fixed$posterior$mean, col = "darkgreen", lwd = 2)
+```
+
+If you supply both `fix_g = TRUE` and `pc.penalty`, the returned
+`log_likelihood` is a penalized pseudo-objective:
+
+```text
+Step B conditional marginal likelihood + log PC prior on (log(range), log(sigma)).
+```
+
+```{r}
+fit_pc_fixed <- fit_fun_pc(
+  x_1d,
+  s_1d,
+  g_init = Matern(theta = log(1.2), sigma = 0.7),
+  fix_g = TRUE,
+  beta_fixed = 0.1
+)
+
+fit_pc_fixed$log_likelihood
+fit_pc_fixed$log_likelihood_stepB
+fit_pc_fixed$log_likelihood_pc_prior_theta
+```
+
+# Two-Dimensional Example
+
+For a two-dimensional domain, pass an `n x 2` matrix of coordinates.
+
+```{r}
+set.seed(2026)
+
+nx <- 14
+ny <- 10
+grid <- expand.grid(
+  x = seq(0, 1, length.out = nx),
+  y = seq(0, 1, length.out = ny)
+)
+locations_2d <- as.matrix(grid)
+
+truth_2d <- with(
+  grid,
+  sin(2 * pi * x) * cos(2 * pi * y)
+)
+s_2d <- rep(0.15, nrow(locations_2d))
+x_2d <- truth_2d + rnorm(nrow(locations_2d), sd = s_2d)
+
+fit_fun_2d <- ebnm_Matern_generator(
+  locations = locations_2d,
+  max.edge = c(0.15, 0.3),
+  link = "identity"
+)
+
+fit_2d <- fit_fun_2d(x_2d, s_2d)
+```
+
+```{r}
+op <- par(mfrow = c(1, 2), mar = c(4, 4, 3, 5))
+
+z_truth <- matrix(truth_2d, nrow = nx, ncol = ny)
+image(
+  x = sort(unique(grid$x)),
+  y = sort(unique(grid$y)),
+  z = z_truth,
+  main = "True surface",
+  xlab = "x",
+  ylab = "y",
+  col = hcl.colors(20, "BluYl")
+)
+
+z_fit <- matrix(fit_2d$posterior$mean, nrow = nx, ncol = ny)
+image(
+  x = sort(unique(grid$x)),
+  y = sort(unique(grid$y)),
+  z = z_fit,
+  main = "Posterior mean",
+  xlab = "x",
+  ylab = "y",
+  col = hcl.colors(20, "BluYl")
+)
+
+par(op)
+```
+
+# Useful Outputs
+
+The Matern fitter returns backend-specific components in addition to the common
+`ebnm`-style fields:
+
+```{r}
+names(fit_1d)
+names(fit_pc)
+class(fit_1d$mesh)
+class(fit_1d$inla_result)
+class(fit_pc$inla_result)
+head(fit_1d$posterior_spatial_field)
+```
+
+The mesh is still useful for diagnostics and visualization. The
+`posterior_spatial_field` component contains a latent-field summary for the
+mesh nodes.
+
+- In exact mode, `inla_result` is `NULL`, `posterior_sampler` is available, and
+  the main `log_likelihood` is the exact EB marginal likelihood.
+- In `pc.penalty` mode, `inla_result` stores the INLA fit object, the main
+  `log_likelihood` is backend-dependent, and `posterior_sampler` is currently a
+  compatibility stub that returns `NA`.

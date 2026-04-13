@@ -1,0 +1,4 @@
+"scenario","range_prob","sigma_prob","stepB_fixed_theta_mlik_integration","stepB_fixed_theta_mlik_gaussian","stepB_fixed_theta_log_posterior_mode","stepB_fixed_theta_max_log_posterior"
+"balanced",0.5,0.5,-89.0520580532071,-89.0520580532071,0,-89.0520580532071
+"smooth_lowvar",0.1,0.1,-89.0520580532071,-89.0520580532071,0,-89.0520580532071
+"rough_highvar",0.9,0.9,-89.0520580532071,-89.0520580532071,0,-89.0520580532071

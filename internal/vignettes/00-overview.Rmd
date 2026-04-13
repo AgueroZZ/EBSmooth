@@ -1,0 +1,148 @@
+---
+title: "EBSmoothr Overview"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.5
+)
+
+load_ebsmoothr <- function() {
+  if (requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all("../../EBSmoothr", quiet = TRUE, export_all = FALSE)
+    return(invisible(TRUE))
+  }
+  if (requireNamespace("EBSmoothr", quietly = TRUE)) {
+    library(EBSmoothr)
+    return(invisible(TRUE))
+  }
+  stop("Install EBSmoothr or pkgload before rendering this document.")
+}
+
+load_ebsmoothr()
+```
+
+# Purpose
+
+`EBSmoothr` provides empirical-Bayes smoothers for Gaussian means problems.
+The package currently exposes two prior families:
+
+- `LGP`: a one-dimensional local Gaussian-process smoother with a TMB backend.
+- `Matern`: a one-dimensional or two-dimensional exact Gaussian Matern smoother
+  built from an INLA/SPDE precision representation, with an optional INLA
+  PC-prior backend.
+
+In both cases, the user supplies:
+
+- observations `x`,
+- known standard errors `s`, and
+- either a precomputed setup object or a generator built from locations.
+
+The returned fitter follows the `ebnm` convention:
+
+```{r}
+library(EBSmoothr)
+
+fit_fun <- ebnm_LGP_generator(
+  LGP_setup(t = seq(0, 1, length.out = 10))
+)
+
+str(formals(fit_fun))
+```
+
+# Typical Workflow
+
+The package is designed around a two-step workflow.
+
+1. Construct a smoothing family or setup object.
+2. Generate an `ebnm`-compatible fitting function.
+3. Fit the model to `x` and `s`.
+4. Inspect posterior summaries such as `posterior$mean`, `posterior$var`, and `fitted_g`.
+
+For L-GP:
+
+```{r}
+t <- seq(0, 8, length.out = 100)
+setup <- LGP_setup(t = t, p = 2, num_knots = 25, betaprec = 0)
+fit_fun <- ebnm_LGP_generator(setup, link = "identity")
+```
+
+For Matern:
+
+```{r}
+locations <- seq(0, 8, length.out = 100)
+fit_fun <- ebnm_Matern_generator(locations = locations, link = "identity")
+```
+
+# Choosing Between L-GP and Matern
+
+Use `LGP` when:
+
+- the domain is one-dimensional,
+- a spline-like local basis is natural, and
+- you want explicit control over the polynomial trend basis and knot count.
+
+Use `Matern` when:
+
+- the domain is one-dimensional or two-dimensional,
+- a spatial Gaussian-process interpretation is preferred, or
+- you want an exact Gaussian empirical-Bayes fit based on an INLA/SPDE
+  precision representation over a mesh.
+
+If you instead want Matern hyperparameters to be selected under a PC prior,
+pass `pc.penalty` to `ebnm_Matern_generator()` and the fitter will switch to
+an INLA backend.
+
+# About the Link Function
+
+The package is framed around Gaussian observations.
+
+- `LGP` supports `"identity"` and `"log"`.
+- `Matern` currently supports `"identity"` only, because the exact Gaussian
+  implementation is built around the closed-form marginal likelihood for the
+  normal-means case.
+
+# Minimal Simulated Example
+
+```{r}
+set.seed(1)
+
+t <- seq(0, 10, length.out = 120)
+truth <- sin(t) + 0.25 * cos(2 * t)
+s <- rep(0.25, length(t))
+x <- truth + rnorm(length(t), sd = s)
+
+setup <- LGP_setup(t = t, p = 2, num_knots = 30, betaprec = 0)
+fit_fun <- ebnm_LGP_generator(setup, link = "identity")
+fit <- fit_fun(x, s)
+
+head(fit$posterior)
+fit$fitted_g
+```
+
+```{r}
+plot(t, x, pch = 16, cex = 0.5, col = "grey40",
+     main = "L-GP smoothing example",
+     xlab = "t", ylab = "observed value")
+lines(t, truth, col = "firebrick", lwd = 2, lty = 2)
+lines(t, fit$posterior$mean, col = "navy", lwd = 2)
+```
+
+# Output Structure
+
+Both L-GP and Matern fitters return an object with class `c("list", "ebnm")`.
+Common components include:
+
+- `posterior`: posterior means, variances, and second moments.
+- `fitted_g`: the fitted prior-family parameterization.
+- `fitted_beta`: the fitted or fixed global coefficient(s).
+- `g_init`: the initialization used for the family.
+- `log_likelihood`: the main model-comparison quantity returned by the fitter.
+
+The exact additional components depend on the backend. For example, the Matern
+fit exposes the mesh and a latent spatial-field summary; `inla_result` is
+`NULL` in exact mode and stores the INLA fit object in `pc.penalty` mode.

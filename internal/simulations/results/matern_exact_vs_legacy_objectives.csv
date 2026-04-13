@@ -1,0 +1,5 @@
+"quantity","value"
+"Exact log marginal likelihood at exact optimum",-89.0244045475164
+"Exact log marginal likelihood at legacy fitted range/sigma (beta profiled)",-89.0520580550854
+"Gap: exact optimum minus profiled legacy-hyperparameter objective",0.0276535075689139
+"Legacy INLA raw mlik (not directly comparable)",-89.052058052799

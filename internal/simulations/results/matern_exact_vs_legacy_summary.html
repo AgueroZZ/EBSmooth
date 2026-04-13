@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Exact Matern vs Legacy INLA PC-Prior Sanity Check</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Exact Matern vs Legacy INLA PC-Prior Sanity Check</h1>
+</header>
+<h1 id="exact-matern-vs-legacy-inla-pc-prior-sanity-check">Exact Matern
+vs Legacy INLA PC-Prior Sanity Check</h1>
+<p>Generated on 2026-04-12 15:43:59 CDT</p>
+<h2 id="setup">Setup</h2>
+<ul>
+<li>Single 2D simulation on a 20 x 16 grid (n = 320).</li>
+<li>Truth: range = 0.30, sigma = 0.35, beta0 = 0.2, noise sd = 0.22,
+alpha = 2.</li>
+<li>Exact method: current package implementation with exact Gaussian
+marginal likelihood.</li>
+<li>Legacy method: an INLA route using
+<code>inla.spde2.pcmatern()</code> and INLA’s internal EB optimization
+with joint PC priors on both range and sigma.</li>
+</ul>
+<h2 id="important-caveat">Important Caveat</h2>
+<ul>
+<li>The exact method optimizes an unpenalized exact Gaussian marginal
+likelihood, while the legacy INLA route uses a penalized objective
+induced by the PC priors and INLA’s internal approximation
+machinery.</li>
+<li>Because of that objective mismatch, the legacy <code>mlik</code>
+reported by INLA is still not directly comparable to the exact method’s
+raw marginal log-likelihood, even though both methods now fit range and
+sigma.</li>
+</ul>
+<h2 id="hyperparameters">Hyperparameters</h2>
+<table>
+<thead>
+<tr>
+<th>method</th>
+<th>fitted_range</th>
+<th>fitted_sigma</th>
+<th>fitted_beta</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Exact EB</td>
+<td>0.2914</td>
+<td>0.3527</td>
+<td>0.1959</td>
+</tr>
+<tr>
+<td>Legacy INLA + Joint PC prior</td>
+<td>0.3035</td>
+<td>0.3630</td>
+<td>0.1958</td>
+</tr>
+</tbody>
+</table>
+<h2 id="runtime">Runtime</h2>
+<table>
+<thead>
+<tr>
+<th>method</th>
+<th>elapsed_sec</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Exact EB</td>
+<td>14.3890</td>
+</tr>
+<tr>
+<td>Legacy INLA + Joint PC prior</td>
+<td>4.8570</td>
+</tr>
+</tbody>
+</table>
+<h2 id="posterior-surface-comparison">Posterior Surface Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>metric</th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>corr_exact_vs_legacy</td>
+<td>0.999996</td>
+</tr>
+<tr>
+<td>rmse_exact_vs_legacy</td>
+<td>0.001070</td>
+</tr>
+<tr>
+<td>rmse_exact_vs_truth</td>
+<td>0.149820</td>
+</tr>
+<tr>
+<td>rmse_legacy_vs_truth</td>
+<td>0.149895</td>
+</tr>
+<tr>
+<td>corr_exact_vs_truth</td>
+<td>0.906784</td>
+</tr>
+<tr>
+<td>corr_legacy_vs_truth</td>
+<td>0.906751</td>
+</tr>
+</tbody>
+</table>
+<p>Figure:</p>
+<figure>
+<img src="figures/matern_exact_vs_legacy_inla.png"
+alt="Exact vs legacy Matern fit" />
+<figcaption aria-hidden="true">Exact vs legacy Matern fit</figcaption>
+</figure>
+<h2 id="objective-comparison">Objective Comparison</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>quantity</th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Exact log marginal likelihood at exact optimum</td>
+<td>-89.024405</td>
+</tr>
+<tr>
+<td>Exact log marginal likelihood at legacy fitted range/sigma (beta
+profiled)</td>
+<td>-89.052058</td>
+</tr>
+<tr>
+<td>Gap: exact optimum minus profiled legacy-hyperparameter
+objective</td>
+<td>0.027654</td>
+</tr>
+<tr>
+<td>Legacy INLA raw mlik (not directly comparable)</td>
+<td>-89.052058</td>
+</tr>
+</tbody>
+</table>
+<p>Interpretation:</p>
+<ul>
+<li>The posterior correlation between the two fitted surfaces is
+0.999996.</li>
+<li>The exact objective gap between the exact optimum and the best
+exact-model fit constrained to the legacy fitted range/sigma pair is
+0.027654.</li>
+<li>This exact-objective gap is the more meaningful same-scale
+comparison, because the raw INLA <code>mlik</code> includes a different
+model/objective configuration.</li>
+</ul>
+</body>
+</html>

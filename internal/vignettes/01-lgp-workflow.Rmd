@@ -1,0 +1,178 @@
+---
+title: "L-GP Workflow"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.5
+)
+
+load_ebsmoothr <- function() {
+  if (requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all("../../EBSmoothr", quiet = TRUE, export_all = FALSE)
+    return(invisible(TRUE))
+  }
+  if (requireNamespace("EBSmoothr", quietly = TRUE)) {
+    library(EBSmoothr)
+    return(invisible(TRUE))
+  }
+  stop("Install EBSmoothr or pkgload before rendering this document.")
+}
+
+load_ebsmoothr()
+```
+
+# Overview
+
+This vignette illustrates one-dimensional empirical-Bayes smoothing with the
+L-GP prior. The main entry points are:
+
+- `LGP_setup()`, which builds the design and penalty matrices.
+- `ebnm_LGP_generator()`, which returns the model-fitting function.
+
+# Identity-Link Example
+
+The identity link is the simplest setting: the posterior summaries target the
+latent mean directly.
+
+```{r}
+set.seed(123)
+
+t <- seq(0, 10, length.out = 150)
+truth <- sin(t) + 0.3 * cos(1.5 * t)
+s <- sample(c(0.15, 0.25, 0.4), length(t), replace = TRUE)
+x <- truth + rnorm(length(t), sd = s)
+
+setup_identity <- LGP_setup(
+  t = t,
+  p = 2,
+  num_knots = 35,
+  betaprec = 0,
+  link = "identity"
+)
+
+fit_identity <- ebnm_LGP_generator(
+  setup_identity,
+  link = "identity"
+)(x, s)
+
+head(fit_identity$posterior)
+fit_identity$fitted_g
+```
+
+```{r}
+plot(t, x, pch = 16, cex = 0.45, col = "grey50",
+     xlab = "t", ylab = "x",
+     main = "L-GP with identity link")
+lines(t, truth, col = "firebrick", lwd = 2, lty = 2)
+lines(t, fit_identity$posterior$mean, col = "navy", lwd = 2)
+
+upper <- fit_identity$posterior$mean + 2 * sqrt(fit_identity$posterior$var)
+lower <- fit_identity$posterior$mean - 2 * sqrt(fit_identity$posterior$var)
+polygon(c(t, rev(t)), c(upper, rev(lower)),
+        border = NA, col = rgb(0, 0, 1, 0.15))
+lines(t, fit_identity$posterior$mean, col = "navy", lwd = 2)
+```
+
+# Positive Mean Functions with the Log Link
+
+When the mean function should remain positive, use the log link. In this case,
+the posterior summaries are transformed back to the mean scale.
+
+```{r}
+set.seed(456)
+
+truth_log <- exp(0.4 * sin(t) + 0.15 * cos(2 * t))
+s_log <- rep(0.2, length(t))
+x_log <- truth_log + rnorm(length(t), sd = s_log)
+
+setup_log <- LGP_setup(
+  t = t,
+  p = 2,
+  num_knots = 35,
+  betaprec = 0,
+  link = "log"
+)
+
+fit_log <- ebnm_LGP_generator(
+  setup_log,
+  link = "log"
+)(x_log, s_log)
+```
+
+```{r}
+plot(t, x_log, pch = 16, cex = 0.45, col = "grey50",
+     xlab = "t", ylab = "x",
+     main = "L-GP with log link")
+lines(t, truth_log, col = "firebrick", lwd = 2, lty = 2)
+lines(t, fit_log$posterior$mean, col = "darkgreen", lwd = 2)
+```
+
+# Role of `betaprec`
+
+`betaprec` controls how the global polynomial coefficients are treated:
+
+- `betaprec > 0`: proper Gaussian prior on the global coefficients.
+- `betaprec = 0`: diffuse prior on the global coefficients.
+- `betaprec < 0`: empirical-Bayes optimization mode for the global coefficients.
+
+The following comparison shows how to create alternative setups:
+
+```{r}
+setup_diffuse <- LGP_setup(t = t, p = 2, num_knots = 30, betaprec = 0)
+setup_proper  <- LGP_setup(t = t, p = 2, num_knots = 30, betaprec = 1)
+setup_eb      <- LGP_setup(t = t, p = 2, num_knots = 30, betaprec = -1)
+
+fit_diffuse <- ebnm_LGP_generator(setup_diffuse)(x, s)
+fit_proper  <- ebnm_LGP_generator(setup_proper)(x, s)
+fit_eb      <- ebnm_LGP_generator(setup_eb)(x, s)
+
+c(
+  diffuse = as.numeric(fit_diffuse$log_likelihood),
+  proper = as.numeric(fit_proper$log_likelihood),
+  eb = as.numeric(fit_eb$log_likelihood)
+)
+```
+
+# Fixed Hyperparameters and Fixed Beta
+
+When `fix_g = TRUE`, the L-GP fitter treats both the smoothing parameter and
+the global coefficients as fixed. If `beta_fixed` is omitted, it defaults to a
+zero vector.
+
+```{r}
+fit_fixed <- ebnm_LGP_generator(setup_eb)(
+  x,
+  s,
+  g_init = LGP(0),
+  fix_g = TRUE,
+  beta_fixed = c(0.25, 0)
+)
+
+fit_fixed$fitted_g
+fit_fixed$fitted_beta
+```
+
+# Useful Outputs
+
+The L-GP fitter exposes several diagnostics that are helpful during method
+development:
+
+```{r}
+names(fit_identity)
+fit_identity$log_likelihood
+fit_identity$log_likelihood_stepA
+fit_identity$log_likelihood_stepB_joint
+fit_identity$log_likelihood_stepB_laplace
+```
+
+In routine use, the most important components are usually:
+
+- `fit$posterior$mean`
+- `fit$posterior$var`
+- `fit$fitted_g`
+- `fit$log_likelihood`

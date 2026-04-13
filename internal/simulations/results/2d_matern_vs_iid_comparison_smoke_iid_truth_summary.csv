@@ -1,0 +1,2 @@
+"grid_label","nx","ny","n","mean_est_range","q10_est_range","q50_est_range","q90_est_range","q10_range_over_mesh","q50_range_over_mesh","q90_range_over_mesh","mean_surface_corr"
+"12x10",12,10,120,0.045615668320255,0.0405361938014657,0.045615668320255,0.0506951428390442,0.506702422518322,0.570195854003187,0.633689285488053,0.939343530041017

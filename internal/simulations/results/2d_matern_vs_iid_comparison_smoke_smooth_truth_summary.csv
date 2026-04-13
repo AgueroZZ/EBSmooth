@@ -1,0 +1,2 @@
+"grid_label","nx","ny","n","mean_est_range","median_est_range","mean_est_sigma","median_est_sigma","mean_abs_err_range","mean_abs_err_sigma","mean_surface_rmse","mean_surface_corr"
+"12x10",12,10,120,0.226280544617879,0.226280544617879,0.354499772973583,0.354499772973583,0.0164226035240776,0.0348507034831174,0.141628133217471,0.926490258674354

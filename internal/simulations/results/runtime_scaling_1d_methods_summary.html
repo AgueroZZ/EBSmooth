@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>1D Runtime Scaling Study</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">1D Runtime Scaling Study</h1>
+</header>
+<h1 id="d-runtime-scaling-study">1D Runtime Scaling Study</h1>
+<p>This internal benchmark studies how runtime scales with sample size
+<code>n</code> for the main 1D algorithmic variants currently available
+or internally prototyped in this repository.</p>
+<h2 id="design">Design</h2>
+<ul>
+<li>Sample sizes: <code>100, 300, 1000, 3000, 10000</code>.</li>
+<li>Data are generated on a 1D increasing domain with approximately 100
+observation points per unit length.</li>
+<li>Noise level is fixed at <code>0.22</code>.</li>
+<li>The runtime includes the full end-to-end fit for each method,
+including setup/generator construction.</li>
+<li>For Matern methods, the mesh edge is fixed at <code>0.2</code> to
+let latent-field complexity grow with the domain length.</li>
+<li>For L-GP, the knot count is chosen from the domain length with a
+minimum of 30 and a maximum of 500.</li>
+<li>Each individual fit is capped at <code>120</code> seconds.</li>
+</ul>
+<h2 id="methods-in-the-plot">Methods in the plot</h2>
+<ul>
+<li><code>LGP</code>, <code>betaprec = 0</code></li>
+<li><code>LGP</code>, <code>betaprec &lt; 0</code></li>
+<li><code>Matern</code>, <code>betaprec = 0</code>, exact
+integrated-flat beta objective</li>
+<li><code>Matern</code>, <code>betaprec &lt; 0</code>, exact profiled
+beta objective</li>
+<li><code>Matern + PC prior</code>, <code>betaprec = 0</code>, INLA Step
+A with beta integrated out</li>
+<li><code>Matern + PC prior</code>, <code>betaprec &lt; 0</code>, exact
+profiled objective + PC prior</li>
+<li><code>Matern + PC prior</code>, <code>betaprec &lt; 0</code>, INLA
+<code>clinear</code> prototype</li>
+</ul>
+<h2 id="status-counts">Status counts</h2>
+<table>
+<thead>
+<tr>
+<th>status</th>
+<th>count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>completed</td>
+<td>27</td>
+</tr>
+<tr>
+<td>timed_out</td>
+<td>8</td>
+</tr>
+</tbody>
+</table>
+<p>Plot:
+<code>/Users/ziangzhang/Desktop/EBSmooth/internal/simulations/results/runtime_scaling_1d_methods.png</code></p>
+<h2 id="timing-table">Timing Table</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+<col style="width: 6%" />
+</colgroup>
+<thead>
+<tr>
+<th>n</th>
+<th>lgp_b0</th>
+<th>status_lgp_b0</th>
+<th>lgp_blt0</th>
+<th>status_lgp_blt0</th>
+<th>matern_b0_exact</th>
+<th>status_matern_b0_exact</th>
+<th>matern_blt0_exact</th>
+<th>status_matern_blt0_exact</th>
+<th>matern_pc_b0_inla</th>
+<th>status_matern_pc_b0_inla</th>
+<th>matern_pc_blt0_exact</th>
+<th>status_matern_pc_blt0_exact</th>
+<th>matern_pc_blt0_clinear</th>
+<th>status_matern_pc_blt0_clinear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100.0000</td>
+<td>0.2770</td>
+<td>completed</td>
+<td>0.4160</td>
+<td>completed</td>
+<td>0.9680</td>
+<td>completed</td>
+<td>0.8620</td>
+<td>completed</td>
+<td>2.9870</td>
+<td>completed</td>
+<td>0.7570</td>
+<td>completed</td>
+<td>3.0200</td>
+<td>completed</td>
+</tr>
+<tr>
+<td>300.0000</td>
+<td>0.6050</td>
+<td>completed</td>
+<td>0.5770</td>
+<td>completed</td>
+<td>0.8280</td>
+<td>completed</td>
+<td>2.4300</td>
+<td>completed</td>
+<td>3.6010</td>
+<td>completed</td>
+<td>3.0010</td>
+<td>completed</td>
+<td>3.7560</td>
+<td>completed</td>
+</tr>
+<tr>
+<td>1000.0000</td>
+<td>7.0430</td>
+<td>completed</td>
+<td>6.6230</td>
+<td>completed</td>
+<td>0.7190</td>
+<td>completed</td>
+<td>12.2130</td>
+<td>completed</td>
+<td>3.4150</td>
+<td>completed</td>
+<td>8.1420</td>
+<td>completed</td>
+<td>3.3480</td>
+<td>completed</td>
+</tr>
+<tr>
+<td>3000.0000</td>
+<td>120.0000</td>
+<td>timed_out</td>
+<td>120.0000</td>
+<td>timed_out</td>
+<td>0.8090</td>
+<td>completed</td>
+<td>120.0000</td>
+<td>timed_out</td>
+<td>4.3010</td>
+<td>completed</td>
+<td>120.0000</td>
+<td>timed_out</td>
+<td>3.3300</td>
+<td>completed</td>
+</tr>
+<tr>
+<td>10000.0000</td>
+<td>120.0000</td>
+<td>timed_out</td>
+<td>120.0000</td>
+<td>timed_out</td>
+<td>2.7300</td>
+<td>completed</td>
+<td>120.0000</td>
+<td>timed_out</td>
+<td>17.4480</td>
+<td>completed</td>
+<td>120.0000</td>
+<td>timed_out</td>
+<td>4.4720</td>
+<td>completed</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

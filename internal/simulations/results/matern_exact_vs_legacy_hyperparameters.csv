@@ -1,0 +1,3 @@
+"method","fitted_range","fitted_sigma","fitted_beta"
+"Exact EB",0.291350696914766,0.352736373571426,0.195882096157467
+"Legacy INLA + Joint PC prior",0.303480651713377,0.362996862918093,0.195837443868592

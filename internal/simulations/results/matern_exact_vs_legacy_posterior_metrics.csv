@@ -1,0 +1,7 @@
+"metric","value"
+"corr_exact_vs_legacy",0.99999611510882
+"rmse_exact_vs_legacy",0.00106964851332529
+"rmse_exact_vs_truth",0.149820408215882
+"rmse_legacy_vs_truth",0.149895339113183
+"corr_exact_vs_truth",0.906784050119482
+"corr_legacy_vs_truth",0.906751259998443

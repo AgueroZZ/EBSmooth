@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>EBNM Smooth Foundations</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">EBNM Smooth Foundations</h1>
+</header>
+<h1 id="smooth-ebnm-foundations-for-ebsmoothr">Smooth EBNM Foundations
+for <code>EBSmoothr</code></h1>
+<h2 id="purpose">Purpose</h2>
+<p>This note records the basic mathematics behind smooth empirical Bayes
+normal means (smooth EBNM), and explains how the current
+<code>EBSmoothr</code> package implements that framework.</p>
+<p>The intended audience is future collaborators on this repository who
+need a compact reference for:</p>
+<ul>
+<li>the core EBNM problem;</li>
+<li>the smooth-EBNM extension with Gaussian-process-style smoothing
+priors;</li>
+<li>the specific L-GP and Matern parameterizations used in
+<code>EBSmoothr</code>;</li>
+<li>the places where the current implementation matches the
+mathematics;</li>
+<li>the places where the current implementation still needs
+correction.</li>
+</ul>
+<h2 id="source-context">Source Context</h2>
+<p>This note is based on:</p>
+<ul>
+<li>the classical EBNM summary in the Stephens Lab reading list;</li>
+<li>the <code>ebnm</code> package paper describing the standard two-step
+EBNM workflow;</li>
+<li>the smooth-EBNM formula shown in the screenshot supplied with this
+project on 2026-04-11;</li>
+<li>the current package code in <code>EBSmoothr/R/01_LGP.R</code>,
+<code>EBSmoothr/R/02_Matern.R</code>, and
+<code>EBSmoothr/src/EBSmoothr.cpp</code>.</li>
+</ul>
+<h2 id="classical-ebnm">1. Classical EBNM</h2>
+<p>The classical empirical Bayes normal means problem starts from
+observations <code>x = (x_1, ..., x_n)</code> with known standard errors
+<code>s = (s_1, ..., s_n)</code>:</p>
+<pre class="text"><code>x_i | theta_i, s_i ~ N(theta_i, s_i^2),   i = 1, ..., n.</code></pre>
+<p>The empirical Bayes idea is to assume the unknown means are
+themselves drawn from a prior distribution <code>g</code> in some family
+<code>G</code>:</p>
+<pre class="text"><code>theta_i ~ g,   g in G.</code></pre>
+<p>The standard EBNM workflow has two steps:</p>
+<pre class="text"><code>Step A: estimate g by maximizing the marginal likelihood
+
+    g_hat = argmax_{g in G} p(x | s, g)
+          = argmax_{g in G} product_i int p(x_i | theta_i, s_i) g(theta_i) dtheta_i.
+
+Step B: compute posterior distributions and posterior summaries
+
+    p(theta_i | x_i, s_i, g_hat).</code></pre>
+<p>In other words, EBNM is not just posterior inference under a fixed
+prior. It is posterior inference after first estimating the prior from
+the full dataset.</p>
+<h2 id="smooth-ebnm">2. Smooth EBNM</h2>
+<p>Smooth EBNM replaces the iid prior on <code>theta_i</code> with a
+structured prior over a function defined on locations
+<code>s_i</code>.</p>
+<p>The screenshot supplied with the project uses the following
+template:</p>
+<pre class="text"><code>y_i | theta(s_i) ~ N(theta(s_i), sigma_i^2),
+theta(.) ~ h(GP),   GP in G.</code></pre>
+<p>This is the right high-level idea. For implementation work, it is
+often clearer to separate the latent Gaussian process from the
+observation-scale mean:</p>
+<pre class="text"><code>x_i | eta(s_i), s_i ~ N(h(eta(s_i)), s_i^2),
+eta(.) ~ GP_lambda.</code></pre>
+<p>Here:</p>
+<ul>
+<li><code>eta(.)</code> is a latent smooth Gaussian field indexed by
+location;</li>
+<li><code>h</code> is a link function mapping the latent field to the
+observation-scale mean;</li>
+<li><code>lambda</code> denotes the smoothing hyperparameters of the
+prior family.</li>
+</ul>
+<p>In this notation, the observation-scale mean is</p>
+<pre class="text"><code>theta(s_i) = h(eta(s_i)).</code></pre>
+<p>This is the formulation that best matches the current package
+implementation.</p>
+<h3 id="smooth-ebnm-as-a-two-step-procedure">2.1 Smooth EBNM as a
+two-step procedure</h3>
+<p>Smooth EBNM still follows the same EB logic as classical EBNM:</p>
+<pre class="text"><code>Step A: estimate the smoothing hyperparameters lambda by maximizing
+        the marginal likelihood
+
+    lambda_hat = argmax_lambda p(x | s, lambda)
+               = argmax_lambda int p(x | eta, s) p(eta | lambda) deta.
+
+Step B: compute posterior summaries under lambda_hat
+
+    p(eta | x, s, lambda_hat)
+    and therefore
+    p(theta | x, s, lambda_hat).</code></pre>
+<p>So the main difference from classical EBNM is not the EB structure.
+The difference is the form of the prior. Instead of an iid prior
+<code>g</code> on each <code>theta_i</code>, we use a joint smoothing
+prior over the full latent mean vector.</p>
+<h3 id="identity-and-log-links">2.2 Identity and log links</h3>
+<p>The current package is built around Gaussian observations. At the
+package level, the useful links are:</p>
+<pre class="text"><code>Identity link: theta_i = eta_i.
+Log link:      theta_i = exp(eta_i).</code></pre>
+<p>If Step B yields a Gaussian approximation</p>
+<pre class="text"><code>eta_i | x, s, lambda_hat approx N(m_i, v_i),</code></pre>
+<p>then:</p>
+<pre class="text"><code>Identity link:
+    E(theta_i | x) = m_i,
+    Var(theta_i | x) = v_i.
+
+Log link:
+    E(theta_i | x) approx exp(m_i + v_i / 2),
+    Var(theta_i | x) approx exp(2 m_i + v_i) (exp(v_i) - 1).</code></pre>
+<p>These are exactly the moment transforms used in the L-GP code for the
+<code>log</code> link.</p>
+<p>For the current exact Matern implementation, only the identity link
+is supported. This is because the closed-form marginal likelihood and
+posterior updates are implemented for the Gaussian normal-means case
+<code>x_i | eta_i ~ N(eta_i, s_i^2)</code>.</p>
+<h2 id="the-l-gp-model-in-ebsmoothr">3. The L-GP Model in
+<code>EBSmoothr</code></h2>
+<h3 id="mathematical-model">3.1 Mathematical model</h3>
+<p>The L-GP implementation is a one-dimensional smooth EBNM model on
+locations <code>t_1, ..., t_n</code>. The latent field is represented in
+basis form:</p>
+<pre class="text"><code>eta = X beta + B U.</code></pre>
+<p>Here:</p>
+<ul>
+<li><code>X</code> is a global polynomial design matrix;</li>
+<li><code>beta</code> are global trend coefficients;</li>
+<li><code>B</code> is a local basis matrix;</li>
+<li><code>U</code> are local coefficients.</li>
+</ul>
+<p>The package assigns a Gaussian prior to <code>U</code> with precision
+matrix</p>
+<pre class="text"><code>Q_U(theta) = exp(theta) P,</code></pre>
+<p>so that</p>
+<pre class="text"><code>U | theta ~ N(0, Q_U(theta)^(-1)).</code></pre>
+<p>When <code>betaprec &gt; 0</code>, the package also uses a proper
+Gaussian prior on <code>beta</code>:</p>
+<pre class="text"><code>beta ~ N(0, (betaprec I)^(-1)).</code></pre>
+<p>When <code>betaprec = 0</code>, <code>beta</code> is treated as
+diffuse. When <code>betaprec &lt; 0</code>, the package uses an
+empirical-Bayes mode in which <code>beta</code> is optimized in Step A
+rather than integrated out.</p>
+<p>The observation model is:</p>
+<pre class="text"><code>x_i | eta_i, s_i ~ N(eta_i, s_i^2)             for the identity link,
+x_i | eta_i, s_i ~ N(exp(eta_i), s_i^2)        for the log link.</code></pre>
+<h3 id="how-this-is-implemented">3.2 How this is implemented</h3>
+<p>The core TMB objective is in
+<code>EBSmoothr/src/EBSmoothr.cpp</code>. It evaluates the joint log
+density</p>
+<pre class="text"><code>log p(x | eta, s) + log p(U | theta) + log p(beta),</code></pre>
+<p>with:</p>
+<ul>
+<li><code>eta = X beta + B U</code>;</li>
+<li>Gaussian likelihood for <code>x</code>;</li>
+<li>Gaussian prior on <code>U</code>;</li>
+<li>optional Gaussian prior on <code>beta</code>.</li>
+</ul>
+<p>This is the right joint target for a smooth EBNM model with a latent
+Gaussian basis representation.</p>
+<p>The R-side workflow is:</p>
+<ol type="1">
+<li><code>LGP_setup()</code> builds <code>X</code>, <code>B</code>,
+<code>P</code>, <code>logPdet</code>, and the metadata needed by
+TMB.</li>
+<li><code>ebnm_LGP_generator()</code> performs Step A and Step B using
+Laplace approximation.</li>
+<li>Posterior means and variances are returned in an
+<code>ebnm</code>-style object.</li>
+</ol>
+<h3 id="step-a-step-b-logic">3.3 Step A / Step B logic</h3>
+<p>For the main branches, the code matches the intended mathematics:</p>
+<ul>
+<li>if <code>betaprec &gt;= 0</code>, Step A integrates out both
+<code>U</code> and <code>beta</code> and optimizes
+<code>theta</code>;</li>
+<li>if <code>betaprec &lt; 0</code>, Step A integrates out
+<code>U</code> and optimizes <code>(theta, beta)</code>;</li>
+<li>Step B then fixes the Step A hyperparameter estimates and computes
+posterior summaries for the latent mean.</li>
+</ul>
+<p>In the main non-<code>fix_g</code> branches, this is mathematically
+aligned with smooth EBNM.</p>
+<h3 id="fix_g-semantics-in-the-current-code">3.4 <code>fix_g</code>
+semantics in the current code</h3>
+<p>The current L-GP code now uses the following convention:</p>
+<pre class="text"><code>If fix_g = TRUE:
+    theta is fixed at g_init$scale,
+    beta is fixed at beta_fixed,
+    and beta_fixed defaults to zero if omitted.</code></pre>
+<p>This is computationally simple and explicit. It also avoids the
+earlier ambiguity in which some branches silently re-estimated
+<code>beta</code> while others implicitly fixed it at zero.</p>
+<h2 id="the-matern-model-in-ebsmoothr">4. The Matern Model in
+<code>EBSmoothr</code></h2>
+<h3 id="mathematical-model-1">4.1 Mathematical model</h3>
+<p>The Matern implementation is a smooth EBNM model in one or two
+spatial dimensions. Let <code>w</code> denote the latent Matern field on
+a mesh, and let <code>A</code> be the projector from mesh nodes to
+observation locations. Then the latent mean is</p>
+<pre class="text"><code>eta = beta0 + A w.</code></pre>
+<p>The prior on <code>w</code> is a stationary Matern Gaussian field
+implemented through the INLA/SPDE representation. The current
+observation model is Gaussian with the identity link:</p>
+<pre class="text"><code>x_i | eta_i, s_i ~ N(eta_i, s_i^2).</code></pre>
+<p>The smoothing hyperparameters optimized by the package are:</p>
+<ul>
+<li><code>range</code>, parameterized internally as
+<code>theta = log(range)</code>;</li>
+<li><code>sigma</code>, the latent-field marginal standard
+deviation;</li>
+<li><code>beta0</code>, the global intercept.</li>
+</ul>
+<h3 id="how-this-is-implemented-1">4.2 How this is implemented</h3>
+<p>The current package now supports two Matern backends.</p>
+<h4 id="exact-backend">Exact backend</h4>
+<p>If <code>pc.penalty = NULL</code>, the current package code:</p>
+<ol type="1">
+<li>normalizes the locations and builds a mesh;</li>
+<li>constructs a stationary SPDE template with
+<code>INLA::inla.spde2.matern()</code>;</li>
+<li>for any fixed <code>(range, sigma, beta0)</code>, builds the latent
+precision matrix <code>Q(range, sigma)</code> with
+<code>INLA::inla.spde2.precision()</code>;</li>
+<li>evaluates the exact Gaussian marginal likelihood</li>
+</ol>
+<pre class="text"><code>ell = -0.5 * [ n log(2 pi) + log|D| - log|Q| + log|Q_post|
+               + r&#39; D^{-1} r - b&#39; Q_post^{-1} b ],</code></pre>
+<p>where</p>
+<pre class="text"><code>D = diag(s_1^2, ..., s_n^2),
+r = x - beta0,
+b = A&#39; D^{-1} r,
+Q_post = Q + A&#39; D^{-1} A;</code></pre>
+<ol start="5" type="1">
+<li>maximizes this exact marginal likelihood over
+<code>(log(range), log(sigma), beta0)</code> when
+<code>fix_g = FALSE</code>;</li>
+<li>computes the exact Gaussian posterior</li>
+</ol>
+<pre class="text"><code>w | x, s, lambda_hat ~ N(Q_post^{-1} b, Q_post^{-1}),</code></pre>
+<p>and then maps that posterior to the observation scale via
+<code>beta0 + A w</code>.</p>
+<p>This exact branch is the clean empirical-Bayes implementation: the
+primary <code>log_likelihood</code> is the exact Step A marginal
+likelihood.</p>
+<h4 id="pc-prior-backend">PC-prior backend</h4>
+<p>If <code>pc.penalty</code> is supplied, the package switches to an
+INLA backend based on <code>INLA::inla.spde2.pcmatern()</code>.</p>
+<ul>
+<li>With <code>fix_g = FALSE</code>, the fitter runs an INLA Step A
+optimization with free Matern hyperparameters and free intercept.</li>
+<li>The main <code>log_likelihood</code> is then taken to be the Step A
+penalized objective <code>resA$misc$log.posterior.mode</code>.</li>
+<li>The object also records Step A marginal-likelihood diagnostics such
+as <code>resA$mlik["log marginal-likelihood (integration)"]</code> and
+<code>resA$mlik["log marginal-likelihood (Gaussian)"]</code>.</li>
+<li>By default, the fitter does not automatically recompute the manual
+exact Gaussian objective at the Step A mode, because that extra check
+can be expensive at large <code>n</code>.</li>
+<li>Instead, the fitted object can be inspected afterwards with
+<code>matern_objective_breakdown(fit)</code>, which reports the exact
+fixed-beta, profiled-beta, and integrated-flat objectives, as well as
+the PC-prior term when present.</li>
+<li>With <code>fix_g = TRUE</code>, the fitter instead runs an INLA Step
+B computation with fixed hyperparameters and fixed intercept.</li>
+<li>In this fixed-parameter PC-prior branch, the main
+<code>log_likelihood</code> is a penalized pseudo-objective:</li>
+</ul>
+<pre class="text"><code>Step B conditional marginal likelihood
++ log p(log(range), log(sigma) | PC prior).</code></pre>
+<p>This split reflects the empirical fact that Step A quantities are
+prior-sensitive, while Step B <code>mlik</code> becomes prior-invariant
+once the hyperparameters are held fixed.</p>
+<h3 id="where-the-current-implementation-matches-the-intended-math">4.3
+Where the current implementation matches the intended math</h3>
+<p>The current Matern code now matches the intended smooth-EBNM
+mathematics in the main ways:</p>
+<ul>
+<li>the observation model is the Gaussian normal-means model with known
+<code>s_i</code>;</li>
+<li>the prior is a stationary Matern Gaussian field;</li>
+<li>in exact mode, the primary <code>log_likelihood</code> is the exact
+empirical-Bayes marginal likelihood after optimizing the smoothing
+hyperparameters;</li>
+<li>in <code>pc.penalty</code> mode with <code>fix_g = FALSE</code>, the
+primary <code>log_likelihood</code> is the Step A penalized objective
+used by the INLA fit;</li>
+<li>in <code>pc.penalty</code> mode with <code>fix_g = TRUE</code>, the
+primary <code>log_likelihood</code> is an explicitly labeled penalized
+fixed-parameter surrogate;</li>
+<li>posterior means and variances come from the exact Gaussian posterior
+in exact mode and from INLA posterior summaries in PC-prior mode.</li>
+</ul>
+<h3 id="current-limitations">4.4 Current limitations</h3>
+<p>The Matern implementation is now much cleaner mathematically, but it
+still has scope limitations by design:</p>
+<ul>
+<li>only the identity link is supported;</li>
+<li><code>alpha</code> is fixed by the user and is not optimized;</li>
+<li>the meaning of <code>log_likelihood</code> is backend-dependent and
+must be interpreted together with the backend-specific diagnostics;</li>
+<li><code>posterior_sampler</code> is implemented only for the exact
+backend;</li>
+<li>the compatibility field <code>inla_result</code> is
+<code>NULL</code> in exact mode and is populated only in the optional
+PC-prior mode.</li>
+</ul>
+<h2 id="a-unified-view-of-the-package">5. A Unified View of the
+Package</h2>
+<p>Both <code>LGP</code> and <code>Matern</code> should be understood as
+specific prior families inside a single smooth-EBNM template:</p>
+<pre class="text"><code>x_i | eta_i, s_i ~ N(h(eta_i), s_i^2),
+eta ~ smooth Gaussian prior with hyperparameters lambda.</code></pre>
+<p>Then:</p>
+<ul>
+<li>Step A estimates <code>lambda</code>;</li>
+<li>Step B computes posterior summaries given
+<code>lambda_hat</code>;</li>
+<li>the returned <code>fitted_g</code> should summarize the fitted
+smoothing prior;</li>
+<li>the returned <code>log_likelihood</code> should represent the
+primary Step A objective for the active backend, or an explicitly
+labeled penalized surrogate when the hyperparameters are fixed.</li>
+</ul>
+<p>This is the cleanest way to think about the package.</p>
+<h2 id="implementation-summary-by-file">6. Implementation Summary by
+File</h2>
+<h3
+id="ebsmoothrsrcebsmoothr.cpp"><code>EBSmoothr/src/EBSmoothr.cpp</code></h3>
+<ul>
+<li>Defines the joint likelihood and prior terms for the L-GP
+model.</li>
+<li>Encodes the identity-link and log-link observation models.</li>
+<li>Provides the Laplace target used by the TMB-based fitter.</li>
+</ul>
+<h3 id="ebsmoothrr01_lgp.r"><code>EBSmoothr/R/01_LGP.R</code></h3>
+<ul>
+<li>Builds the L-GP basis and penalty objects.</li>
+<li>Runs Step A and Step B for the TMB-based L-GP smoother.</li>
+<li>Converts latent Gaussian moments to observation-scale moments for
+the log link.</li>
+</ul>
+<h3 id="ebsmoothrr02_matern.r"><code>EBSmoothr/R/02_Matern.R</code></h3>
+<ul>
+<li>Builds the mesh and projector matrix for one-dimensional or
+two-dimensional locations.</li>
+<li>Defines either an exact stationary Matern SPDE template or an INLA
+<code>pcmatern</code> template, depending on whether
+<code>pc.penalty</code> is supplied.</li>
+<li>Evaluates and optimizes the exact Gaussian marginal likelihood in
+exact mode.</li>
+<li>Runs INLA Step A or Step B in the optional PC-prior mode.</li>
+<li>Returns backend-specific likelihood diagnostics, posterior
+summaries, and mesh information.</li>
+</ul>
+<h2 id="practical-takeaways-for-future-development">7. Practical
+Takeaways for Future Development</h2>
+<p>If the package is to behave as a mathematically clean smooth-EBNM
+solver, the following principles should be maintained:</p>
+<ol type="1">
+<li><code>log_likelihood</code> should always be clearly documented as
+the primary objective for the active backend.</li>
+<li><code>fix_g</code> should have explicit semantics for both smoothing
+hyperparameters and any fixed global coefficients.</li>
+<li><code>g_init</code> should continue to function as a real
+initialization or fixed hyperparameter carrier.</li>
+<li>The exposed <code>link</code> choices should match both the
+mathematical model and the implemented backend.</li>
+<li>Backend-specific diagnostic fields should remain explicit whenever
+exact EB and INLA-PC modes expose different objective quantities.</li>
+</ol>
+<h2 id="references">References</h2>
+<ul>
+<li>Stephens Lab empirical Bayes reading list:
+https://stephenslab.github.io/reading_lists/empirical_bayes.html</li>
+<li>Willwerscheid, Carbonetto, and Stephens (2021), <code>ebnm</code>
+package paper: https://arxiv.org/abs/2110.00152</li>
+<li>Smooth-EBNM formula excerpt provided in the local screenshot on
+2026-04-11:
+<code>/var/folders/32/d3z6m_356kj8891z4qvp50340000gn/T/TemporaryItems/NSIRD_screencaptureui_vgxX8e/Screenshot 2026-04-11 at 11.21.24 PM.png</code></li>
+</ul>
+</body>
+</html>

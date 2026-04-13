@@ -1,0 +1,2 @@
+"cell_id","regime","regime_label","tau0","n","n_sampled","n_valid","n_flip_to_iid","p_flip_to_iid","median_range_ratio_refined","median_delta_change"
+"fixed_domain__tau0_0.5__n_40","fixed_domain","fixed-domain",0.5,40,4,4,0,0,1,0

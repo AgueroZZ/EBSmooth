@@ -1,0 +1,3 @@
+"setting","grid_label","nx","ny","n","n_valid","p_matern","p_iid","p_tie","mean_delta","median_delta"
+"iid_truth","12x10",12,10,120,2,0,1,0,-8.77588821614893,-8.77588821614893
+"smooth_truth","12x10",12,10,120,2,1,0,0,10.3155135119596,10.3155135119596

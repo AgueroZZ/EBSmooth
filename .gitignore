@@ -1,4 +1,14 @@
+.DS_Store
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+**/.DS_Store
+**/.Rhistory
+*.tar.gz
+*.Rcheck/
+EBSmoothr/src/*.o
+EBSmoothr/src/*.so
+EBSmoothr/src/*.dll
+EBSmoothr/src/*.dylib
+EBSmoothr/src/*.rds

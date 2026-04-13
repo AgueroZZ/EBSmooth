@@ -1,0 +1,287 @@
+---
+title: "Package Sanity Checks"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.5
+)
+
+load_ebsmoothr <- function() {
+  if (requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all("../../EBSmoothr", quiet = TRUE, export_all = FALSE)
+    return(invisible(TRUE))
+  }
+  if (requireNamespace("EBSmoothr", quietly = TRUE)) {
+    library(EBSmoothr)
+    return(invisible(TRUE))
+  }
+  stop("Install EBSmoothr or pkgload before rendering this document.")
+}
+
+load_ebsmoothr()
+
+check_results <- list()
+
+record_check <- function(name, expr) {
+  ok <- isTRUE(expr)
+  if (!ok) {
+    stop(sprintf("Sanity check failed: %s", name))
+  }
+  check_results[[length(check_results) + 1L]] <<- data.frame(
+    check = name,
+    status = "PASS",
+    stringsAsFactors = FALSE
+  )
+  invisible(TRUE)
+}
+
+collect_checks <- function() {
+  do.call(rbind, check_results)
+}
+```
+
+# Purpose
+
+This internal vignette is a light end-to-end sanity check for the current
+`EBSmoothr` package interface. It is not a replacement for the `testthat`
+suite. The goal is simpler:
+
+- verify that the main public fitting paths still run;
+- verify that the returned objects have the expected structure;
+- verify a few key invariants for the newer exact and PC-prior Matern backends.
+
+# L-GP Identity Link
+
+```{r}
+set.seed(1001)
+
+t <- seq(0, 8, length.out = 80)
+truth_lgp <- sin(t) + 0.25 * cos(1.5 * t)
+s_lgp <- rep(0.2, length(t))
+x_lgp <- truth_lgp + rnorm(length(t), sd = s_lgp)
+
+setup_lgp_identity <- LGP_setup(
+  t = t,
+  p = 2,
+  num_knots = 25,
+  betaprec = 0,
+  link = "identity"
+)
+
+fit_lgp_identity <- ebnm_LGP_generator(
+  setup_lgp_identity,
+  link = "identity"
+)(x_lgp, s_lgp)
+
+record_check(
+  "L-GP identity returns one posterior row per observation",
+  nrow(fit_lgp_identity$posterior) == length(t)
+)
+record_check(
+  "L-GP identity posterior means are finite",
+  all(is.finite(fit_lgp_identity$posterior$mean))
+)
+record_check(
+  "L-GP identity log_likelihood is finite",
+  is.finite(as.numeric(fit_lgp_identity$log_likelihood))
+)
+
+fit_lgp_identity$fitted_g
+head(fit_lgp_identity$posterior)
+```
+
+# L-GP Log Link and Fixed Beta
+
+```{r}
+set.seed(1002)
+
+truth_lgp_log <- exp(0.35 * sin(t) + 0.1 * cos(2 * t))
+s_lgp_log <- rep(0.18, length(t))
+x_lgp_log <- truth_lgp_log + rnorm(length(t), sd = s_lgp_log)
+
+setup_lgp_log <- LGP_setup(
+  t = t,
+  p = 2,
+  num_knots = 25,
+  betaprec = -1,
+  link = "log"
+)
+
+fit_lgp_log <- ebnm_LGP_generator(
+  setup_lgp_log,
+  link = "log"
+)(x_lgp_log, s_lgp_log)
+
+fit_lgp_fixed <- ebnm_LGP_generator(setup_lgp_log)(
+  x_lgp,
+  s_lgp,
+  g_init = LGP(0),
+  fix_g = TRUE,
+  beta_fixed = c(0.2, 0)
+)
+
+record_check(
+  "L-GP log-link posterior means are positive",
+  all(fit_lgp_log$posterior$mean > 0)
+)
+record_check(
+  "L-GP fixed-beta path returns the requested beta",
+  max(abs(fit_lgp_fixed$fitted_beta - c(0.2, 0))) < 1e-8
+)
+
+c(
+  lgp_log_likelihood = as.numeric(fit_lgp_log$log_likelihood),
+  lgp_fixed_likelihood = as.numeric(fit_lgp_fixed$log_likelihood)
+)
+```
+
+# Exact Matern in One Dimension
+
+```{r}
+set.seed(1003)
+
+locations_1d <- seq(0, 10, length.out = 90)
+truth_matern_1d <- 0.3 + sin(locations_1d / 1.8)
+s_matern_1d <- rep(0.22, length(locations_1d))
+x_matern_1d <- truth_matern_1d + rnorm(length(locations_1d), sd = s_matern_1d)
+
+fit_matern_exact_1d <- ebnm_Matern_generator(
+  locations = locations_1d,
+  link = "identity"
+)(x_matern_1d, s_matern_1d)
+
+record_check(
+  "Exact Matern backend label is correct",
+  identical(fit_matern_exact_1d$backend, "exact")
+)
+record_check(
+  "Exact Matern inla_result is NULL",
+  is.null(fit_matern_exact_1d$inla_result)
+)
+record_check(
+  "Exact Matern posterior means are finite",
+  all(is.finite(fit_matern_exact_1d$posterior$mean))
+)
+record_check(
+  "Exact Matern fitted sigma is positive",
+  fit_matern_exact_1d$fitted_g$sigma > 0
+)
+
+fit_matern_exact_1d$fitted_g
+fit_matern_exact_1d$fitted_beta
+```
+
+# Exact Matern in Two Dimensions
+
+```{r}
+set.seed(1004)
+
+grid_2d <- expand.grid(
+  x = seq(0, 1, length.out = 7),
+  y = seq(0, 1, length.out = 6)
+)
+locations_2d <- as.matrix(grid_2d)
+truth_matern_2d <- with(grid_2d, sin(2 * pi * x) * cos(2 * pi * y))
+s_matern_2d <- rep(0.2, nrow(locations_2d))
+x_matern_2d <- truth_matern_2d + rnorm(nrow(locations_2d), sd = s_matern_2d)
+
+fit_matern_exact_2d <- ebnm_Matern_generator(
+  locations = locations_2d,
+  max.edge = c(0.25, 0.4),
+  link = "identity"
+)(x_matern_2d, s_matern_2d)
+
+record_check(
+  "Exact Matern 2D posterior length matches the data length",
+  nrow(fit_matern_exact_2d$posterior) == nrow(locations_2d)
+)
+record_check(
+  "Exact Matern 2D latent-field summary is non-empty",
+  nrow(fit_matern_exact_2d$posterior_spatial_field) > 0
+)
+
+cor(
+  fit_matern_exact_2d$posterior$mean,
+  truth_matern_2d
+)
+```
+
+# Matern with `pc.penalty`
+
+```{r}
+set.seed(1005)
+
+fit_fun_matern_pc <- ebnm_Matern_generator(
+  locations = locations_1d,
+  link = "identity",
+  pc.penalty = list(
+    range = c(1.0, 0.5),
+    sigma = c(0.7, 0.5)
+  )
+)
+
+fit_matern_pc <- fit_fun_matern_pc(x_matern_1d, s_matern_1d)
+fit_matern_pc_fixed <- fit_fun_matern_pc(
+  x_matern_1d,
+  s_matern_1d,
+  g_init = Matern(theta = log(1.0), sigma = 0.7),
+  fix_g = TRUE,
+  beta_fixed = 0.3
+)
+
+record_check(
+  "PC-prior Matern backend label is correct",
+  identical(fit_matern_pc$backend, "inla_pc")
+)
+record_check(
+  "PC-prior Matern stores the INLA fit object",
+  !is.null(fit_matern_pc$inla_result)
+)
+record_check(
+  "PC-prior Step A main objective equals the stored penalized objective",
+  abs(as.numeric(fit_matern_pc$log_likelihood) - fit_matern_pc$log_likelihood_stepA_penalized) < 1e-8
+)
+record_check(
+  "PC-prior fixed mode uses Step B plus the PC prior contribution",
+  abs(
+    as.numeric(fit_matern_pc_fixed$log_likelihood) -
+      (fit_matern_pc_fixed$log_likelihood_stepB +
+         fit_matern_pc_fixed$log_likelihood_pc_prior_theta)
+  ) < 1e-8
+)
+
+c(
+  pc_stepA_penalized = fit_matern_pc$log_likelihood_stepA_penalized,
+  pc_stepA_mlik_integration = fit_matern_pc$log_likelihood_stepA_mlik_integration,
+  pc_fixed_penalized = fit_matern_pc_fixed$log_likelihood
+)
+```
+
+# Summary Table
+
+```{r}
+knitr::kable(
+  collect_checks(),
+  align = c("l", "c"),
+  caption = "Summary of package-level sanity checks."
+)
+```
+
+# Takeaway
+
+This vignette confirms that the current package can still run its main public
+paths:
+
+- L-GP with identity and log links;
+- L-GP with fixed smoothing parameter and fixed beta coefficients;
+- exact Matern in one and two dimensions;
+- Matern with `pc.penalty`, both in Step A optimization mode and in fixed
+  hyperparameter mode.
+
+For stricter regression coverage, the authoritative checks remain the
+`testthat` suite in `EBSmoothr/tests/testthat`.

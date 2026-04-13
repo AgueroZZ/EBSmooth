@@ -1,0 +1,16 @@
+"cell_id","regime","regime_label","tau0","n","n_sampled","n_valid","n_flip_to_iid","p_flip_to_iid","median_range_ratio_refined","median_delta_change"
+"fixed_domain__tau0_0.2__n_40","fixed_domain","fixed-domain",0.2,40,10,10,0,0,1,0
+"fixed_domain__tau0_0.2__n_80","fixed_domain","fixed-domain",0.2,80,10,10,0,0,1,0
+"fixed_domain__tau0_0.2__n_160","fixed_domain","fixed-domain",0.2,160,4,4,0,0,1,0
+"fixed_domain__tau0_0.2__n_320","fixed_domain","fixed-domain",0.2,320,2,2,0,0,1,0
+"fixed_domain__tau0_0.5__n_40","fixed_domain","fixed-domain",0.5,40,6,6,0,0,1,0
+"fixed_domain__tau0_0.5__n_80","fixed_domain","fixed-domain",0.5,80,10,10,0,0,1,0
+"fixed_domain__tau0_0.5__n_160","fixed_domain","fixed-domain",0.5,160,10,10,0,0,1,0
+"fixed_domain__tau0_0.5__n_320","fixed_domain","fixed-domain",0.5,320,3,3,0,0,1,0
+"increasing_domain__tau0_0.2__n_80","increasing_domain","increasing-domain",0.2,80,10,10,0,0,1,0
+"increasing_domain__tau0_0.2__n_160","increasing_domain","increasing-domain",0.2,160,6,6,0,0,1,0
+"increasing_domain__tau0_0.2__n_320","increasing_domain","increasing-domain",0.2,320,2,2,0,0,1,0
+"increasing_domain__tau0_0.5__n_80","increasing_domain","increasing-domain",0.5,80,10,10,0,0,1,0
+"increasing_domain__tau0_0.5__n_160","increasing_domain","increasing-domain",0.5,160,10,10,0,0,1,0
+"increasing_domain__tau0_0.5__n_320","increasing_domain","increasing-domain",0.5,320,10,10,0,0,1,0
+"increasing_domain__tau0_0.5__n_640","increasing_domain","increasing-domain",0.5,640,10,10,0,0,1,0
