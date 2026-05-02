@@ -36,13 +36,23 @@ The package currently exposes two prior families:
   built from an INLA/SPDE precision representation, with an optional INLA
   PC-prior backend.
 
-In both cases, the user supplies:
+At the top level, the package is organized around two collaborator-facing
+workflows:
 
-- observations `x`,
-- known standard errors `s`, and
-- either a precomputed setup object or a generator built from locations.
+- Known observation standard errors `s`: use `ebnm_LGP_generator()` or
+  `ebnm_Matern_generator()` to build an `ebnm`-compatible fitter.
+- Unknown observation standard errors: use `eb_smoother()` with `s = NULL`
+  to learn one common observation noise SD.
 
-The returned fitter follows the `ebnm` convention:
+`eb_smoother()` also accepts known `s`, but this overview focuses on the two
+main entry points above so collaborators can quickly choose the right API.
+
+# Entry-Point Guide
+
+## Known `s`: generator workflow
+
+When standard errors are known and you want an `ebnm`-compatible fit, the
+package follows the generator pattern:
 
 ```{r}
 library(EBSmoothr)
@@ -54,16 +64,50 @@ fit_fun <- ebnm_LGP_generator(
 str(formals(fit_fun))
 ```
 
-# Typical Workflow
+The resulting fitter has the usual `ebnm` signature `function(x, s, ...)` and
+returns an object with class `c("list", "ebnm")`.
 
-The package is designed around a two-step workflow.
+## Unknown `s`: high-level smoothing workflow
 
-1. Construct a smoothing family or setup object.
-2. Generate an `ebnm`-compatible fitting function.
-3. Fit the model to `x` and `s`.
-4. Inspect posterior summaries such as `posterior$mean`, `posterior$var`, and `fitted_g`.
+When standard errors are unknown, `eb_smoother()` is the main entry point. It
+learns one common observation noise SD and returns an `eb_smoother_fit` object
+with compact `print()` / `summary()` methods.
 
-For L-GP:
+```{r}
+set.seed(1)
+
+loc <- seq(0, 8, length.out = 100)
+truth <- sin(loc) + 0.25 * cos(2 * loc)
+x <- truth + rnorm(length(loc), sd = 0.2)
+
+fit_spatial <- eb_smoother(
+  x = x,
+  s = NULL,
+  family = "matern",
+  locations = loc
+)
+
+fit_baseline <- eb_smoother(
+  x = x,
+  s = NULL,
+  family = "constant",
+  beta_prec = 0
+)
+
+fit_spatial
+summary(fit_baseline)
+```
+
+# Typical Workflows
+
+The package therefore has two common setup patterns.
+
+1. Known `s`: construct a family-specific setup object if needed, generate an
+   `ebnm`-compatible fitting function, and fit the model to `x` and `s`.
+2. Unknown `s`: call `eb_smoother()` directly with `s = NULL`, choose the
+   family, and inspect the resulting `eb_smoother_fit`.
+
+For the known-`s` generator workflow, a typical L-GP setup looks like:
 
 ```{r}
 t <- seq(0, 8, length.out = 100)
@@ -71,7 +115,7 @@ setup <- LGP_setup(t = t, p = 2, num_knots = 25, betaprec = 0)
 fit_fun <- ebnm_LGP_generator(setup, link = "identity")
 ```
 
-For Matern:
+For the known-`s` generator workflow, a typical Matern setup looks like:
 
 ```{r}
 locations <- seq(0, 8, length.out = 100)
@@ -97,6 +141,11 @@ If you instead want Matern hyperparameters to be selected under a PC prior,
 pass `pc.penalty` to `ebnm_Matern_generator()` and the fitter will switch to
 an INLA backend.
 
+If standard errors are unknown, the same family choice carries over to
+`eb_smoother()` via `family = "lgp"` or `family = "matern"`, while
+`family = "constant"` provides the Gaussian baseline with no spatial
+structure.
+
 # About the Link Function
 
 The package is framed around Gaussian observations.
@@ -106,10 +155,10 @@ The package is framed around Gaussian observations.
   implementation is built around the closed-form marginal likelihood for the
   normal-means case.
 
-# Minimal Simulated Example
+# Minimal Known-`s` Example
 
 ```{r}
-set.seed(1)
+set.seed(2)
 
 t <- seq(0, 10, length.out = 120)
 truth <- sin(t) + 0.25 * cos(2 * t)
@@ -134,7 +183,7 @@ lines(t, fit$posterior$mean, col = "navy", lwd = 2)
 
 # Output Structure
 
-Both L-GP and Matern fitters return an object with class `c("list", "ebnm")`.
+The generator workflows return objects with class `c("list", "ebnm")`.
 Common components include:
 
 - `posterior`: posterior means, variances, and second moments.
@@ -146,3 +195,12 @@ Common components include:
 The exact additional components depend on the backend. For example, the Matern
 fit exposes the mesh and a latent spatial-field summary; `inla_result` is
 `NULL` in exact mode and stores the INLA fit object in `pc.penalty` mode.
+
+`eb_smoother()` instead returns an object with class
+`c("eb_smoother_fit", "list")`. In addition to the stored posterior summaries,
+these fits expose:
+
+- `fitted_noise_sd` for the learned-noise workflow,
+- `family`, `backend`, and `noise_mode` metadata,
+- `fitted_g` and `fitted_beta`, and
+- compact `print()` / `summary()` methods for collaborator-facing inspection.

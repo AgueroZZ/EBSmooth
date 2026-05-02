@@ -1,0 +1,4 @@
+"component_group","n_components","n_scored","p_correct","mean_delta"
+"spatial",4,4,1,16.2165967708985
+"nonspatial",3,3,0,0.30388950997759
+"overall",7,7,0.571428571428571,9.39686508764666

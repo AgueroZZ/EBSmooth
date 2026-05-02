@@ -1,0 +1,7 @@
+"n","benchmark","method_id","elapsed_seconds","status","detail"
+3000,"public_api_single_fit","lgp_known",60,"timed_out","reached elapsed time limit [cpu=60s, elapsed=60s]"
+3000,"public_api_single_fit","lgp_learned",60,"timed_out","reached elapsed time limit [cpu=60s, elapsed=60s]"
+3000,"public_api_single_fit","matern_exact_known",2.55300000000001,"completed",""
+3000,"public_api_single_fit","matern_exact_learned",2.485,"completed",""
+3000,"public_api_single_fit","matern_pc_known",3.43000000000001,"completed",""
+3000,"public_api_single_fit","matern_pc_learned",3.864,"completed",""

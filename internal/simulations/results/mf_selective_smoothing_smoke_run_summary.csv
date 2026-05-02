@@ -1,0 +1,3 @@
+"rep","seed","status","error_message","n_estimated_components","n_aligned_components","n_screened_spatial","label_accuracy","original_spatial_loading_mse","selective_spatial_loading_mse","original_nonspatial_loading_mse","selective_nonspatial_loading_mse","max_abs_nonspatial_loading_change","flash_elapsed_sec","selective_elapsed_sec"
+1,20260419,"ok",NA,3,3,3,0.666666666666667,0.0164530948309352,0.0163973238875005,0.000124527142493377,0.000669371374544642,0,0.111,7.861
+2,20260420,"ok",NA,4,4,4,0.5,0.0100671760029774,0.00693855631245917,0.00398708490197749,0.0112985862172534,0,0.146999999999998,12.228

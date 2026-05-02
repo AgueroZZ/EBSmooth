@@ -1,0 +1,3 @@
+"n","benchmark","method_id","n_components","elapsed_seconds","status","detail"
+3000,"repeated_matern_pc_learned","rebuild_each_call",4,12.225,"completed",""
+3000,"repeated_matern_pc_learned","reuse_matern_setup",4,11.273,"completed",""

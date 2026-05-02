@@ -1,0 +1,5 @@
+"case","elapsed_seconds","status","detail","n","d","n_spde","max_edge"
+"matern_exact_known_2d",7.482,"completed",NA,3000,2,3352,"0.1, 0.2"
+"matern_exact_learned_2d",9.198,"completed",NA,3000,2,3352,"0.1, 0.2"
+"matern_pc_learned_2d",9.147,"completed",NA,3000,2,3352,"0.1, 0.2"
+"matern_exact_objective_eval_2d",0.0399999999999991,"completed",NA,3000,2,3352,"0.1, 0.2"

@@ -1,0 +1,17 @@
+"scenario","backend","status","elapsed_sec","actual_backend","implementation","validation_status","log_likelihood","fitted_beta","fitted_range","fitted_sigma","fitted_noise_sd","error","delta_log_likelihood","delta_beta","delta_noise_sd","posterior_mean_max_abs"
+"1d_log_learned_eb_n100_auto","auto","ok",0.480999999999995,"laplace","tmb",NA,79.6934852777015,0.0971214334238553,0.365021390641566,0.187502916864533,0.0901706104001722,NA,NA,NA,NA,NA
+"1d_log_learned_eb_n100_laplace_tmb","tmb","ok",0.521000000000001,"laplace","tmb",NA,79.6934852777015,0.0971214334238553,0.365021390641566,0.187502916864533,0.0901706104001722,NA,NA,NA,NA,NA
+"1d_log_learned_eb_n100_laplace_r","r","ok",30.273,"laplace","r",NA,79.6934839812759,0.0970425340577485,0.3650025294879,0.187482644839528,0.0901713749389379,NA,NA,NA,NA,NA
+"1d_log_learned_eb_n300_auto","auto","ok",0.887,"laplace","tmb",NA,222.468559326504,0.0987323197600251,0.40677481149109,0.178392349576506,0.107111886147281,NA,NA,NA,NA,NA
+"1d_log_learned_eb_n300_laplace_tmb","tmb","ok",0.856999999999999,"laplace","tmb",NA,222.468559326504,0.0987323197600251,0.40677481149109,0.178392349576506,0.107111886147281,NA,NA,NA,NA,NA
+"1d_log_learned_eb_n1000_auto","auto","ok",2.446,"laplace","tmb",NA,874.732311134295,0.0996000499857881,0.449631028950499,0.184375461640467,0.0976801430411671,NA,NA,NA,NA,NA
+"1d_log_learned_eb_n1000_laplace_tmb","tmb","ok",2.22299999999998,"laplace","tmb",NA,874.732311134295,0.0996000499857881,0.449631028950499,0.184375461640467,0.0976801430411671,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k16_auto","auto","ok",6.12700000000001,"inla",NA,NA,197.61677706806,0,1.0738048742479,0.157320393614379,NA,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k16_laplace_tmb","tmb","ok",13.008,"laplace","tmb",NA,197.616779680975,0,1.07177766471136,0.157063372363582,NA,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k16_inla","inla","ok",5.404,"inla",NA,NA,197.616771954156,0,1.0738053178639,0.157320430768218,NA,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k24_auto","auto","ok",6.648,"inla",NA,NA,464.104111176089,0,1.19411353633558,0.173478854428944,NA,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k24_laplace_tmb","tmb","ok",13.736,"laplace","tmb",NA,464.103186862975,0,1.19468431455988,0.173504472669573,NA,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k24_inla","inla","ok",6.97399999999999,"inla",NA,NA,464.104110603324,0,1.19411345662605,0.17347883956088,NA,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k32_auto","auto","ok",10.448,"inla",NA,NA,829.470769154411,0,1.37733125064478,0.181518178795415,NA,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k32_laplace_tmb","tmb","ok",27.555,"laplace","tmb",NA,829.469882318214,0,1.38042854611419,0.181853500417938,NA,NA,NA,NA,NA,NA
+"2d_log_known_fixed_k32_inla","inla","ok",10.566,"inla",NA,NA,829.470769150688,0,1.37733088133409,0.181518138391365,NA,NA,NA,NA,NA,NA

@@ -378,6 +378,179 @@ fit_lgp_package <- function(dat,
   fit_fun(dat$x, dat$s, g_init = LGP(0))
 }
 
+fit_public_lgp_known <- function(dat) {
+  domain_length <- max(dat$t) - min(dat$t)
+  num_knots <- choose_num_knots(domain_length)
+  setup <- LGP_setup(
+    t = dat$t,
+    p = 2,
+    num_knots = num_knots,
+    betaprec = 0,
+    link = "identity"
+  )
+  eb_smoother(dat$x, s = dat$s, family = "lgp", setup = setup)
+}
+
+fit_public_lgp_learned <- function(dat) {
+  domain_length <- max(dat$t) - min(dat$t)
+  num_knots <- choose_num_knots(domain_length)
+  setup <- LGP_setup(
+    t = dat$t,
+    p = 2,
+    num_knots = num_knots,
+    betaprec = 0,
+    link = "identity"
+  )
+  eb_smoother(dat$x, s = NULL, family = "lgp", setup = setup)
+}
+
+fit_public_matern_exact_known <- function(dat,
+                                          max.edge = 0.2) {
+  eb_smoother(
+    dat$x,
+    s = dat$s,
+    family = "matern",
+    locations = dat$t,
+    backend = "exact",
+    max.edge = max.edge
+  )
+}
+
+fit_public_matern_exact_learned <- function(dat,
+                                            max.edge = 0.2) {
+  eb_smoother(
+    dat$x,
+    s = NULL,
+    family = "matern",
+    locations = dat$t,
+    backend = "exact",
+    max.edge = max.edge
+  )
+}
+
+fit_public_matern_pc_known <- function(dat,
+                                       pc_penalty,
+                                       max.edge = 0.2) {
+  eb_smoother(
+    dat$x,
+    s = dat$s,
+    family = "matern",
+    locations = dat$t,
+    backend = "inla_pc",
+    pc.penalty = pc_penalty,
+    max.edge = max.edge
+  )
+}
+
+fit_public_matern_pc_learned <- function(dat,
+                                         pc_penalty,
+                                         max.edge = 0.2) {
+  eb_smoother(
+    dat$x,
+    s = NULL,
+    family = "matern",
+    locations = dat$t,
+    backend = "inla_pc",
+    pc.penalty = pc_penalty,
+    max.edge = max.edge
+  )
+}
+
+benchmark_public_api_n3000 <- function(pc_penalty_known,
+                                       pc_penalty_learned,
+                                       max.edge = 0.2,
+                                       timeout_seconds = Inf) {
+  dat <- make_benchmark_data_1d(n = 3000L)
+  specs <- list(
+    list(id = "lgp_known", fit = function() fit_public_lgp_known(dat)),
+    list(id = "lgp_learned", fit = function() fit_public_lgp_learned(dat)),
+    list(id = "matern_exact_known", fit = function() fit_public_matern_exact_known(dat, max.edge = max.edge)),
+    list(id = "matern_exact_learned", fit = function() fit_public_matern_exact_learned(dat, max.edge = max.edge)),
+    list(id = "matern_pc_known", fit = function() fit_public_matern_pc_known(dat, pc_penalty = pc_penalty_known, max.edge = max.edge)),
+    list(id = "matern_pc_learned", fit = function() fit_public_matern_pc_learned(dat, pc_penalty = pc_penalty_learned, max.edge = max.edge))
+  )
+
+  do.call(
+    rbind,
+    lapply(specs, function(spec) {
+      tm <- time_one(spec$fit(), timeout_seconds = timeout_seconds)
+      data.frame(
+        n = 3000L,
+        benchmark = "public_api_single_fit",
+        method_id = spec$id,
+        elapsed_seconds = tm$elapsed,
+        status = tm$status,
+        detail = if (is.na(tm$detail)) "" else tm$detail,
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+}
+
+benchmark_repeated_matern_setup_reuse <- function(pc_penalty,
+                                                  max.edge = 0.2,
+                                                  timeout_seconds = Inf,
+                                                  n = 3000L,
+                                                  n_components = 4L) {
+  dat <- make_benchmark_data_1d(n = n)
+  component_matrix <- sapply(seq_len(n_components), function(k) {
+    dat$truth + 0.1 * cos((k + 1) * dat$t / 5) + stats::rnorm(n, sd = dat$s)
+  })
+  if (is.null(dim(component_matrix))) {
+    component_matrix <- matrix(component_matrix, ncol = 1)
+  }
+
+  fit_loop_with_locations <- function() {
+    lapply(seq_len(ncol(component_matrix)), function(k) {
+      eb_smoother(
+        component_matrix[, k],
+        s = NULL,
+        family = "matern",
+        locations = dat$t,
+        backend = "inla_pc",
+        pc.penalty = pc_penalty,
+        max.edge = max.edge
+      )
+    })
+  }
+
+  fit_loop_with_setup <- function() {
+    setup <- Matern_setup(locations = dat$t, max.edge = max.edge)
+    lapply(seq_len(ncol(component_matrix)), function(k) {
+      eb_smoother(
+        component_matrix[, k],
+        s = NULL,
+        family = "matern",
+        setup = setup,
+        backend = "inla_pc",
+        pc.penalty = pc_penalty
+      )
+    })
+  }
+
+  results <- list(
+    rebuild_each_call = time_one(fit_loop_with_locations(), timeout_seconds = timeout_seconds),
+    reuse_matern_setup = time_one(fit_loop_with_setup(), timeout_seconds = timeout_seconds)
+  )
+
+  do.call(
+    rbind,
+    lapply(names(results), function(id) {
+      tm <- results[[id]]
+      data.frame(
+        n = n,
+        benchmark = "repeated_matern_pc_learned",
+        method_id = id,
+        n_components = n_components,
+        elapsed_seconds = tm$elapsed,
+        status = tm$status,
+        detail = if (is.na(tm$detail)) "" else tm$detail,
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+}
+
 build_method_specs <- function(dat,
                                pc_penalty,
                                max.edge = 0.2,
@@ -553,9 +726,27 @@ format_md_table <- function(df, digits = 4) {
 
 save_outputs <- function(results_df,
                          results_dir,
-                         timeout_seconds) {
+                         timeout_seconds,
+                         public_api_df = NULL,
+                         repeated_setup_df = NULL) {
   csv_path <- file.path(results_dir, "runtime_scaling_1d_methods.csv")
   utils::write.csv(results_df, csv_path, row.names = FALSE)
+
+  public_api_csv_path <- if (is.null(public_api_df)) {
+    NA_character_
+  } else {
+    path <- file.path(results_dir, "runtime_public_api_n3000.csv")
+    utils::write.csv(public_api_df, path, row.names = FALSE)
+    path
+  }
+
+  repeated_setup_csv_path <- if (is.null(repeated_setup_df)) {
+    NA_character_
+  } else {
+    path <- file.path(results_dir, "runtime_repeated_matern_n3000.csv")
+    utils::write.csv(repeated_setup_df, path, row.names = FALSE)
+    path
+  }
 
   results_df$series <- paste0(results_df$variant, " [", results_df$implementation, "]")
   results_df$elapsed_plot_seconds <- ifelse(
@@ -671,11 +862,33 @@ save_outputs <- function(results_df,
     "",
     "## Timing Table",
     "",
-    format_md_table(wide_summary, digits = 4)
+    format_md_table(wide_summary, digits = 4),
+    "",
+    "## Public API Benchmark at `n = 3000`",
+    "",
+    if (is.null(public_api_df)) {
+      "Not yet rendered in this partial save."
+    } else {
+      format_md_table(public_api_df[, c("method_id", "elapsed_seconds", "status")], digits = 4)
+    },
+    "",
+    "## Repeated Matern Smoothing Benchmark at `n = 3000`",
+    "",
+    if (is.null(repeated_setup_df)) {
+      "Not yet rendered in this partial save."
+    } else {
+      format_md_table(repeated_setup_df[, c("method_id", "n_components", "elapsed_seconds", "status")], digits = 4)
+    }
   )
   writeLines(md_lines, summary_path)
 
-  list(csv_path = csv_path, plot_path = plot_path, summary_path = summary_path)
+  list(
+    csv_path = csv_path,
+    plot_path = plot_path,
+    summary_path = summary_path,
+    public_api_csv_path = public_api_csv_path,
+    repeated_setup_csv_path = repeated_setup_csv_path
+  )
 }
 
 get_flag_value <- function(args, name) {
@@ -702,15 +915,33 @@ single_method <- get_flag_value(commandArgs(trailingOnly = TRUE), "single-method
 single_timeout <- get_flag_value(commandArgs(trailingOnly = TRUE), "timeout-seconds")
 render_from_csv <- get_flag_value(commandArgs(trailingOnly = TRUE), "render-from-csv")
 
+pc_penalty_public_known <- pc_penalty
+pc_penalty_public_learned <- c(pc_penalty, list(noise = c(anchor = 0.22, alpha = 0.5)))
+
 if (!is.null(single_timeout)) {
   timeout_seconds <- as.numeric(single_timeout)
 }
 
 if (!is.null(render_from_csv)) {
+  set.seed(999)
+  public_api_df <- benchmark_public_api_n3000(
+    pc_penalty_known = pc_penalty_public_known,
+    pc_penalty_learned = pc_penalty_public_learned,
+    max.edge = mesh_edge,
+    timeout_seconds = timeout_seconds
+  )
+  set.seed(1001)
+  repeated_setup_df <- benchmark_repeated_matern_setup_reuse(
+    pc_penalty = pc_penalty_public_learned,
+    max.edge = mesh_edge,
+    timeout_seconds = timeout_seconds
+  )
   rendered_paths <- save_outputs(
     results_df = utils::read.csv(render_from_csv, stringsAsFactors = FALSE),
     results_dir = results_dir,
-    timeout_seconds = timeout_seconds
+    timeout_seconds = timeout_seconds,
+    public_api_df = public_api_df,
+    repeated_setup_df = repeated_setup_df
   )
   message("Saved timing CSV to: ", rendered_paths$csv_path)
   message("Saved summary markdown to: ", rendered_paths$summary_path)
@@ -768,13 +999,34 @@ for (i in seq_along(ns)) {
     timeout_seconds = timeout_seconds
   )
 }
+set.seed(999)
+public_api_df <- benchmark_public_api_n3000(
+  pc_penalty_known = pc_penalty_public_known,
+  pc_penalty_learned = pc_penalty_public_learned,
+  max.edge = mesh_edge,
+  timeout_seconds = timeout_seconds
+)
+set.seed(1001)
+repeated_setup_df <- benchmark_repeated_matern_setup_reuse(
+  pc_penalty = pc_penalty_public_learned,
+  max.edge = mesh_edge,
+  timeout_seconds = timeout_seconds
+)
 paths <- save_outputs(
   results_df = results_df,
   results_dir = results_dir,
-  timeout_seconds = timeout_seconds
+  timeout_seconds = timeout_seconds,
+  public_api_df = public_api_df,
+  repeated_setup_df = repeated_setup_df
 )
 message("Saved timing CSV to: ", paths$csv_path)
 message("Saved summary markdown to: ", paths$summary_path)
+if (!is.na(paths$public_api_csv_path)) {
+  message("Saved public API timing CSV to: ", paths$public_api_csv_path)
+}
+if (!is.na(paths$repeated_setup_csv_path)) {
+  message("Saved repeated-setup timing CSV to: ", paths$repeated_setup_csv_path)
+}
 if (!is.na(paths$plot_path)) {
   message("Saved plot to: ", paths$plot_path)
 }

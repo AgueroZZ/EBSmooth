@@ -34,6 +34,10 @@ L-GP prior. The main entry points are:
 - `LGP_setup()`, which builds the design and penalty matrices.
 - `ebnm_LGP_generator()`, which returns the model-fitting function.
 
+This vignette focuses on the known-standard-error generator workflow. If `s`
+is unknown and you want to learn one common noise SD instead, see
+`eb_smoother()` in `00-overview.Rmd`.
+
 # Identity-Link Example
 
 The identity link is the simplest setting: the posterior summaries target the
