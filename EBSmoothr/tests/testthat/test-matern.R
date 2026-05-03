@@ -62,6 +62,25 @@ test_that("Matern auto backend uses Fisher Laplace for log-link fits", {
   expect_equal(fit_auto_fixed_g$laplace_curvature, "fisher")
 })
 
+test_that("Matern softplus auto backend uses observed Laplace; INLA unsupported", {
+  set.seed(211)
+  loc <- seq(0, 1, length.out = 12)
+  s <- rep(0.1, length(loc))
+  eta <- seq(-6, 6, length.out = length(loc))
+  x <- log1p(exp(eta)) + rnorm(length(loc), sd = s)
+
+  fit_auto <- ebnm_Matern_generator(locations = loc, link = "softplus")(x, s)
+  fit_fisher <- ebnm_Matern_generator(locations = loc, link = "softplus", backend = "laplace_fisher")(x, s)
+  expect_equal(fit_auto$backend, "laplace")
+  expect_equal(fit_auto$laplace_curvature, "observed")
+  expect_equal(fit_fisher$backend, "laplace_fisher")
+  expect_equal(fit_fisher$laplace_curvature, "fisher")
+  expect_error(
+    ebnm_Matern_generator(locations = loc, link = "softplus", backend = "inla")(x, s),
+    "not currently supported by the INLA Matern backend"
+  )
+})
+
 test_that("Matern log-link manual and INLA backends agree", {
   set.seed(12)
 
