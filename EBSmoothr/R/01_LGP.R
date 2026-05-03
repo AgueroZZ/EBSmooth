@@ -188,6 +188,7 @@ LGP <- function(scale = 0, beta = NULL, beta_prec = NULL) {
 #'
 #' @export
 LGP_setup <- function(t, p = 2, num_knots = 30, betaprec = 0, link = "identity") {
+  link <- match.arg(link, choices = c("identity", "log", "softplus"))
   if (!is.numeric(betaprec) || length(betaprec) != 1) stop("betaprec must be a single numeric.")
   t <- as.numeric(t); if (anyNA(t)) stop("t contains NA.")
 
@@ -202,7 +203,7 @@ LGP_setup <- function(t, p = 2, num_knots = 30, betaprec = 0, link = "identity")
     P = as(Matrix::Matrix(P, sparse = TRUE), "TsparseMatrix"),
     logPdet = sum(log(diff(knots))),  # OK for your diag(diff(knots)) P
     betaprec = as.numeric(betaprec),
-    link_id = ifelse(link == "log", 1L, 0L),
+    link_id = if (identical(link, "identity")) 0L else if (identical(link, "log")) 1L else 2L,
     model_id = 0L
   )
   tmbdat
@@ -211,7 +212,7 @@ LGP_setup <- function(t, p = 2, num_knots = 30, betaprec = 0, link = "identity")
 .lgp_observation_terms <- function(eta,
                                    x,
                                    s,
-                                   link = c("identity", "log"),
+                                   link = c("identity", "log", "softplus"),
                                    laplace_curvature = c("observed", "fisher")) {
   link <- match.arg(link)
   laplace_curvature <- match.arg(laplace_curvature)
@@ -222,7 +223,7 @@ LGP_setup <- function(t, p = 2, num_knots = 30, betaprec = 0, link = "identity")
     mu <- eta
     grad <- (mu - x) / (s^2)
     hess_diag <- 1 / (s^2)
-  } else {
+  } else if (identical(link, "log")) {
     if (any(eta > 40)) {
       stop("The log-link linear predictor overflowed during L-GP optimization.")
     }
@@ -233,6 +234,16 @@ LGP_setup <- function(t, p = 2, num_knots = 30, betaprec = 0, link = "identity")
     } else {
       mu * (2 * mu - x) / (s^2)
     }
+  } else {
+    softplus <- ifelse(eta > 0, eta + log1p(exp(-eta)), log1p(exp(eta)))
+    sigmoid <- ifelse(eta >= 0, 1 / (1 + exp(-eta)), exp(eta) / (1 + exp(eta)))
+    mu <- softplus
+    grad <- ((mu - x) / (s^2)) * sigmoid
+    hess_diag <- if (identical(laplace_curvature, "fisher")) {
+      (sigmoid^2) / (s^2)
+    } else {
+      ((sigmoid^2) + (mu - x) * sigmoid * (1 - sigmoid)) / (s^2)
+    }
   }
   resid <- x - mu
   nll <- 0.5 * sum((resid / s)^2 + log(2 * pi * s^2))
@@ -242,15 +253,21 @@ LGP_setup <- function(t, p = 2, num_knots = 30, betaprec = 0, link = "identity")
   list(nll = as.numeric(nll), grad = as.numeric(grad), hess_diag = as.numeric(hess_diag), mu = mu)
 }
 
-.lgp_response_moments_from_eta <- function(eta_mean, eta_var, link = c("identity", "log")) {
+.lgp_response_moments_from_eta <- function(eta_mean, eta_var, link = c("identity", "log", "softplus")) {
   link <- match.arg(link)
   eta_mean <- as.numeric(eta_mean)
   eta_var <- pmax(as.numeric(eta_var), 0)
   if (identical(link, "identity")) {
     return(list(mean = eta_mean, var = eta_var))
   }
-  mean <- exp(eta_mean + 0.5 * eta_var)
-  var <- exp(2 * eta_mean + eta_var) * (exp(eta_var) - 1)
+  if (identical(link, "log")) {
+    mean <- exp(eta_mean + 0.5 * eta_var)
+    var <- exp(2 * eta_mean + eta_var) * (exp(eta_var) - 1)
+  } else {
+    mean <- ifelse(eta_mean > 0, eta_mean + log1p(exp(-eta_mean)), log1p(exp(eta_mean)))
+    sigmoid_mean <- ifelse(eta_mean >= 0, 1 / (1 + exp(-eta_mean)), exp(eta_mean) / (1 + exp(eta_mean)))
+    var <- (sigmoid_mean^2) * eta_var
+  }
   list(mean = as.numeric(mean), var = as.numeric(var))
 }
 
@@ -442,7 +459,7 @@ LGP_setup <- function(t, p = 2, num_knots = 30, betaprec = 0, link = "identity")
                                beta_prec = NULL,
                                beta_prec_missing = FALSE,
                                fix_params = character(),
-                               link = c("identity", "log"),
+                               link = c("identity", "log", "softplus"),
                                learn_noise = FALSE,
                                laplace_curvature = c("observed", "fisher")) {
   link <- match.arg(link)
@@ -560,7 +577,7 @@ LGP_setup <- function(t, p = 2, num_knots = 30, betaprec = 0, link = "identity")
     if (!isTRUE(objective$integrated_beta)) {
       eta_s <- eta_s + as.numeric(X %*% beta_hat)
     }
-    if (identical(link, "identity")) t(eta_s) else t(exp(eta_s))
+    if (identical(link, "identity")) t(eta_s) else if (identical(link, "log")) t(exp(eta_s)) else t(ifelse(eta_s > 0, eta_s + log1p(exp(-eta_s)), log1p(exp(eta_s))))
   }
   fitted_g <- LGP(
     scale = objective$theta,
@@ -713,12 +730,12 @@ ebnm_LGP_generator <- function(LGP_setup,
   link <- match.arg(link)
   backend <- match.arg(backend)
   backend_use <- if (identical(backend, "auto")) {
-    if (identical(link, "log")) "laplace_fisher" else "tmb"
+    if (identical(link, "log")) "laplace_fisher" else if (identical(link, "softplus")) "laplace" else "tmb"
   } else {
     backend
   }
-  if (identical(backend_use, "laplace_fisher") && !identical(link, "log")) {
-    stop("`backend = \"laplace_fisher\"` is only available for `link = \"log\"`.")
+  if (identical(backend_use, "laplace_fisher") && !(identical(link, "log") || identical(link, "softplus"))) {
+    stop("`backend = \"laplace_fisher\"` is only available for `link = \"log\"` or `link = \"softplus\"`.")
   }
 
   .check_numeric_scalar <- function(z, nm) {
@@ -729,7 +746,7 @@ ebnm_LGP_generator <- function(LGP_setup,
   }
 
   # Force link_id from the function argument (override setup$link_id if present)
-  link_id_arg <- if (link == "log") 1L else 0L
+  link_id_arg <- if (identical(link, "identity")) 0L else if (identical(link, "log")) 1L else 2L
   if (!is.null(LGP_setup$link_id) && as.integer(LGP_setup$link_id) != link_id_arg) {
     warning("`link` overrides `LGP_setup$link_id` (they differ). Using link = '", link, "'.")
   }
@@ -1034,7 +1051,7 @@ ebnm_LGP_generator <- function(LGP_setup,
         A <- .build_A_in_par_order(tmbdat$B, tmbdat$X, par_names)
         eta_s <- as.matrix(A) %*% t(samps)
       }
-      if (tmbdat$link_id == 0L) t(eta_s) else t(exp(eta_s))
+      if (tmbdat$link_id == 0L) t(eta_s) else if (tmbdat$link_id == 1L) t(exp(eta_s)) else t(ifelse(eta_s > 0, eta_s + log1p(exp(-eta_s)), log1p(exp(eta_s))))
     }
 
     fitted_g <- LGP(
