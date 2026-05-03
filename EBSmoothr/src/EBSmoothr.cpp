@@ -55,7 +55,7 @@ Type objective_function<Type>::operator() ()
     DATA_SPARSE_MATRIX(P);         // penalty precision (pB x pB), SPD
     DATA_SCALAR(logPdet);          // log det(P), precomputed
     DATA_SCALAR(betaprec);         // beta precision; <=0 => diffuse/no prior
-    DATA_INTEGER(link_id);         // 0: identity, 1: exp-link (mu = exp(eta))
+    DATA_INTEGER(link_id);         // 0: identity, 1: exp-link, 2: softplus-link
     DATA_INTEGER(learn_noise);     // 0: use known s, 1: learn one common noise SD
 
     // --------------------
@@ -75,6 +75,16 @@ Type objective_function<Type>::operator() ()
     vector<Type> mu = eta;
     if (link_id == 1) {
       mu = exp(eta);
+    } else if (link_id == 2) {
+      for (int i = 0; i < eta.size(); i++) {
+        Type e = eta(i);
+        mu(i) = CppAD::CondExpGe(
+          e,
+          Type(0),
+          e + log1p(exp(-e)),
+          log1p(exp(e))
+        );
+      }
     }
 
     vector<Type> noise_sd = s;
@@ -129,7 +139,7 @@ Type objective_function<Type>::operator() ()
     DATA_SCALAR(betaprec);         // beta precision; <=0 => no proper prior
     DATA_SCALAR(matern_alpha);     // v1 expects alpha = 2
     DATA_INTEGER(matern_d);        // spatial dimension
-    DATA_INTEGER(link_id);         // 0: identity, 1: exp-link (mu = exp(eta))
+    DATA_INTEGER(link_id);         // 0: identity, 1: exp-link, 2: softplus-link
     DATA_INTEGER(learn_noise);     // 0: use known s, 1: learn one common noise SD
     DATA_INTEGER(use_pc_prior);    // 0: no PC prior, 1: include PC prior
     DATA_INTEGER(use_pc_noise_prior); // 0: no noise PC prior, 1: include noise PC prior
@@ -181,6 +191,16 @@ Type objective_function<Type>::operator() ()
     vector<Type> mu = eta;
     if (link_id == 1) {
       mu = exp(eta);
+    } else if (link_id == 2) {
+      for (int i = 0; i < eta.size(); i++) {
+        Type e = eta(i);
+        mu(i) = CppAD::CondExpGe(
+          e,
+          Type(0),
+          e + log1p(exp(-e)),
+          log1p(exp(e))
+        );
+      }
     }
     vector<Type> noise_sd = s;
     if (learn_noise == 1) {
