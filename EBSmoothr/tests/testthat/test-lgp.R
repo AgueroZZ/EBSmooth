@@ -117,6 +117,25 @@ test_that("LGP log-link auto backend uses Fisher Laplace", {
   expect_gt(fit_learned$fitted_noise_sd, 0)
 })
 
+test_that("LGP softplus link defaults to observed Laplace and allows Fisher", {
+  skip_if_not_installed("TMB")
+  set.seed(9)
+  n <- 40
+  t <- seq(0, 1, length.out = n)
+  eta <- seq(-6, 6, length.out = n)
+  x <- log1p(exp(eta)) + rnorm(n, sd = 0.08)
+  s <- rep(0.08, n)
+  setup <- LGP_setup(t = t, num_knots = 8, betaprec = 0, link = "softplus")
+
+  fit_auto <- ebnm_LGP_generator(setup, link = "softplus")(x, s)
+  fit_fisher <- ebnm_LGP_generator(setup, link = "softplus", backend = "laplace_fisher")(x, s)
+
+  expect_equal(fit_auto$backend, "laplace")
+  expect_equal(fit_auto$laplace_curvature, "observed")
+  expect_equal(fit_fisher$backend, "laplace_fisher")
+  expect_equal(fit_fisher$laplace_curvature, "fisher")
+})
+
 test_that("LGP fix_params supports scale and beta fixing", {
   set.seed(7)
 
