@@ -716,7 +716,7 @@ print.summary.eb_smoother_fit <- function(x, ...) {
                                    beta_fixed = NULL,
                                    beta_prec = NULL,
                                    beta_prec_missing = FALSE,
-                                   link = c("identity", "log"),
+                                   link = c("identity", "log", "softplus"),
                                    dll = "EBSmoothr") {
   link <- match.arg(link)
 
@@ -732,7 +732,7 @@ print.summary.eb_smoother_fit <- function(x, ...) {
     stop("length(x) must match nrow(X) and nrow(B) in `setup`.")
   }
 
-  link_id_arg <- if (link == "log") 1L else 0L
+  link_id_arg <- if (identical(link, "identity")) 0L else if (identical(link, "log")) 1L else 2L
   tmbdat <- LGP_setup
   tmbdat$x <- x
   tmbdat$s <- rep(1, n)
@@ -956,7 +956,7 @@ print.summary.eb_smoother_fit <- function(x, ...) {
       eta_s <- as.matrix(A) %*% t(samps)
     }
 
-    if (tmbdat$link_id == 0L) t(eta_s) else t(exp(eta_s))
+    if (tmbdat$link_id == 0L) t(eta_s) else if (tmbdat$link_id == 1L) t(exp(eta_s)) else t(ifelse(eta_s > 0, eta_s + log1p(exp(-eta_s)), log1p(exp(eta_s))))
   }
 
   list(
@@ -1043,7 +1043,7 @@ Constant <- function(beta = NULL, beta_prec = NULL) {
   )
 }
 
-.nonspatial_response_moments <- function(beta_mean, beta_var, n, link = c("identity", "log")) {
+.nonspatial_response_moments <- function(beta_mean, beta_var, n, link = c("identity", "log", "softplus")) {
   link <- match.arg(link)
   beta_mean <- as.numeric(beta_mean)[1]
   beta_var <- pmax(as.numeric(beta_var)[1], 0)
@@ -1063,7 +1063,7 @@ Constant <- function(beta = NULL, beta_prec = NULL) {
   )
 }
 
-.nonspatial_posterior_sampler <- function(beta_hat, beta_var, n, link = c("identity", "log")) {
+.nonspatial_posterior_sampler <- function(beta_hat, beta_var, n, link = c("identity", "log", "softplus")) {
   link <- match.arg(link)
   beta_hat <- as.numeric(beta_hat)[1]
   beta_var <- pmax(as.numeric(beta_var)[1], 0)
@@ -1206,7 +1206,7 @@ Constant <- function(beta = NULL, beta_prec = NULL) {
                                         beta_mode,
                                         beta_fixed = NULL,
                                         beta_prec = NULL,
-                                        link = c("identity", "log")) {
+                                        link = c("identity", "log", "softplus")) {
   link <- match.arg(link)
   if (identical(link, "log")) {
     return(.fit_nonspatial_log_known_noise(
@@ -1370,7 +1370,7 @@ Constant <- function(beta = NULL, beta_prec = NULL) {
                                           beta_mode,
                                           beta_fixed = NULL,
                                           beta_prec = NULL,
-                                          link = c("identity", "log")) {
+                                          link = c("identity", "log", "softplus")) {
   link <- match.arg(link)
   if (identical(link, "log")) {
     return(.fit_nonspatial_log_unknown_noise(
@@ -1701,7 +1701,7 @@ eb_smoother <- function(x,
                         profile_s_tol = .Machine$double.eps^0.25,
                         suppress_warnings = TRUE,
                         compute_exact_diagnostic = FALSE,
-                        link = c("identity", "log"),
+                        link = c("identity", "log", "softplus"),
                         ...) {
   beta_prec_missing <- missing(beta_prec)
   alpha_missing <- missing(alpha)
@@ -2458,12 +2458,12 @@ eb_smoother <- function(x,
   )
 
   backend_use <- if (backend == "auto" || backend == "exact") {
-    if (identical(link, "log")) "laplace_fisher" else "tmb"
+    if (identical(link, "log")) "laplace_fisher" else if (identical(link, "softplus")) "laplace" else "tmb"
   } else {
     backend
   }
-  if (identical(backend_use, "laplace_fisher") && !identical(link, "log")) {
-    stop("`backend = \"laplace_fisher\"` is only available for `link = \"log\"`.")
+  if (identical(backend_use, "laplace_fisher") && !(identical(link, "log") || identical(link, "softplus"))) {
+    stop("`backend = \"laplace_fisher\"` is only available for `link = \"log\"` or `link = \"softplus\"`.")
   }
   if (!(backend_use %in% c("tmb", "laplace", "laplace_fisher"))) {
     stop("Unsupported backend for `family = \"lgp\"`.")
