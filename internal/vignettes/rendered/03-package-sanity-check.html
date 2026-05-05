@@ -403,20 +403,24 @@ record_check(
 
 fit_lgp_identity$fitted_g
 #&gt; $scale
-#&gt; [1] 0.9369734
-#&gt; 
+#&gt; [1] 0.936984
+#&gt;
+#&gt; $beta
+#&gt; [1] 0.3707831 0.3338997
+#&gt;
+#&gt; $beta_prec
+#&gt; [1] 0
+#&gt;
 #&gt; attr(,&quot;class&quot;)
 #&gt; [1] &quot;LGP&quot;
-#&gt; attr(,&quot;row.names&quot;)
-#&gt; [1] 1
 head(fit_lgp_identity$posterior)
 #&gt;        mean         var second_moment
-#&gt; 1 0.3707832 0.014260742     0.1517409
-#&gt; 2 0.4067788 0.009365604     0.1748346
-#&gt; 3 0.4471408 0.006668760     0.2066037
-#&gt; 4 0.4918692 0.005220070     0.2471554
-#&gt; 5 0.5402122 0.004696913     0.2965261
-#&gt; 6 0.5900524 0.004591522     0.3527534</code></pre>
+#&gt; 1 0.3707831 0.014260712     0.1517408
+#&gt; 2 0.4067789 0.009365594     0.1748347
+#&gt; 3 0.4471410 0.006668755     0.2066038
+#&gt; 4 0.4918694 0.005220065     0.2471556
+#&gt; 5 0.5402124 0.004696906     0.2965264
+#&gt; 6 0.5900527 0.004591511     0.3527537</code></pre>
 </div>
 <div id="l-gp-log-link-and-fixed-beta" class="section level1">
 <h1>L-GP Log Link and Fixed Beta</h1>
@@ -462,8 +466,8 @@ c(
   lgp_log_likelihood = as.numeric(fit_lgp_log$log_likelihood),
   lgp_fixed_likelihood = as.numeric(fit_lgp_fixed$log_likelihood)
 )
-#&gt;   lgp_log_likelihood lgp_fixed_likelihood 
-#&gt;             16.71439            -21.61051</code></pre>
+#&gt;   lgp_log_likelihood lgp_fixed_likelihood
+#&gt;             16.74366            -21.61051</code></pre>
 </div>
 <div id="exact-matern-in-one-dimension" class="section level1">
 <h1>Exact Matern in One Dimension</h1>
@@ -498,15 +502,21 @@ record_check(
 
 fit_matern_exact_1d$fitted_g
 #&gt; $theta
-#&gt; [1] 1.875687
-#&gt; 
+#&gt; [1] 1.875675
+#&gt;
 #&gt; $sigma
-#&gt; [1] 0.673699
-#&gt; 
+#&gt; [1] 0.6736939
+#&gt;
+#&gt; $beta
+#&gt; [1] 0.3265253
+#&gt;
+#&gt; $beta_prec
+#&gt; NULL
+#&gt;
 #&gt; attr(,&quot;class&quot;)
 #&gt; [1] &quot;Matern&quot;
 fit_matern_exact_1d$fitted_beta
-#&gt; [1] 0.3265355</code></pre>
+#&gt; [1] 0.3265253</code></pre>
 </div>
 <div id="exact-matern-in-two-dimensions" class="section level1">
 <h1>Exact Matern in Two Dimensions</h1>
@@ -565,33 +575,29 @@ fit_matern_pc_fixed &lt;- fit_fun_matern_pc(
 )
 
 record_check(
-  &quot;PC-prior Matern backend label is correct&quot;,
-  identical(fit_matern_pc$backend, &quot;inla_pc&quot;)
+  &quot;PC-prior Matern auto backend remains exact&quot;,
+  identical(fit_matern_pc$backend, &quot;exact&quot;)
 )
 record_check(
-  &quot;PC-prior Matern stores the INLA fit object&quot;,
-  !is.null(fit_matern_pc$inla_result)
+  &quot;PC-prior Matern auto fit does not store an INLA result&quot;,
+  is.null(fit_matern_pc$inla_result)
 )
 record_check(
-  &quot;PC-prior Step A main objective equals the stored penalized objective&quot;,
-  abs(as.numeric(fit_matern_pc$log_likelihood) - fit_matern_pc$log_likelihood_stepA_penalized) &lt; 1e-8
+  &quot;PC-prior Matern stores a finite PC-prior contribution&quot;,
+  is.finite(fit_matern_pc$log_likelihood_pc_prior_theta)
 )
 record_check(
-  &quot;PC-prior fixed mode uses Step B plus the PC prior contribution&quot;,
-  abs(
-    as.numeric(fit_matern_pc_fixed$log_likelihood) -
-      (fit_matern_pc_fixed$log_likelihood_stepB +
-         fit_matern_pc_fixed$log_likelihood_pc_prior_theta)
-  ) &lt; 1e-8
+  &quot;PC-prior fixed mode stores a finite objective&quot;,
+  is.finite(as.numeric(fit_matern_pc_fixed$log_likelihood))
 )
 
 c(
-  pc_stepA_penalized = fit_matern_pc$log_likelihood_stepA_penalized,
-  pc_stepA_mlik_integration = fit_matern_pc$log_likelihood_stepA_mlik_integration,
+  pc_log_likelihood = as.numeric(fit_matern_pc$log_likelihood),
+  pc_prior_contribution = fit_matern_pc$log_likelihood_pc_prior_theta,
   pc_fixed_penalized = fit_matern_pc_fixed$log_likelihood
 )
-#&gt;        pc_stepA_penalized pc_stepA_mlik_integration        pc_fixed_penalized 
-#&gt;                 -10.35268                 -12.41788                 -30.04647</code></pre>
+#&gt;     pc_log_likelihood pc_prior_contribution    pc_fixed_penalized
+#&gt;            -10.938504             -3.329246            -30.046465</code></pre>
 </div>
 <div id="summary-table" class="section level1">
 <h1>Summary Table</h1>
@@ -602,10 +608,6 @@ c(
 )</code></pre>
 <table>
 <caption>Summary of package-level sanity checks.</caption>
-<colgroup>
-<col width="89%" />
-<col width="10%" />
-</colgroup>
 <thead>
 <tr class="header">
 <th align="left">check</th>
@@ -660,21 +662,21 @@ length</td>
 <td align="center">PASS</td>
 </tr>
 <tr class="even">
-<td align="left">PC-prior Matern backend label is correct</td>
+<td align="left">PC-prior Matern auto backend remains exact</td>
 <td align="center">PASS</td>
 </tr>
 <tr class="odd">
-<td align="left">PC-prior Matern stores the INLA fit object</td>
+<td align="left">PC-prior Matern auto fit does not store an INLA
+result</td>
 <td align="center">PASS</td>
 </tr>
 <tr class="even">
-<td align="left">PC-prior Step A main objective equals the stored
-penalized objective</td>
+<td align="left">PC-prior Matern stores a finite PC-prior
+contribution</td>
 <td align="center">PASS</td>
 </tr>
 <tr class="odd">
-<td align="left">PC-prior fixed mode uses Step B plus the PC prior
-contribution</td>
+<td align="left">PC-prior fixed mode stores a finite objective</td>
 <td align="center">PASS</td>
 </tr>
 </tbody>

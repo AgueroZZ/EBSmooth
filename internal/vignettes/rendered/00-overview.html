@@ -394,13 +394,14 @@ fit_fun &lt;- ebnm_LGP_generator(
 )
 
 str(formals(fit_fun))
-#&gt; Dotted pair list of 7
+#&gt; Dotted pair list of 8
 #&gt;  $ x         : symbol
 #&gt;  $ s         : symbol
 #&gt;  $ g_init    : NULL
 #&gt;  $ fix_g     : logi FALSE
 #&gt;  $ beta_fixed: NULL
 #&gt;  $ beta_prec : NULL
+#&gt;  $ fix_params: language character()
 #&gt;  $ output    : NULL</code></pre>
 <p>The resulting fitter has the usual <code>ebnm</code> signature
 <code>function(x, s, ...)</code> and returns an object with class
@@ -428,7 +429,7 @@ fit_spatial &lt;- eb_smoother(
 fit_baseline &lt;- eb_smoother(
   x = x,
   s = NULL,
-  family = &quot;nonspatial&quot;,
+  family = &quot;constant&quot;,
   beta_prec = 0
 )
 
@@ -447,11 +448,11 @@ fit_spatial
 summary(fit_baseline)
 #&gt; Empirical-Bayes smoother summary
 #&gt;   class: eb_smoother_fit
-#&gt;   family: nonspatial
+#&gt;   family: constant
 #&gt;   backend: exact
 #&gt;   noise mode: estimated
 #&gt;   beta mode: prior_flat
-#&gt;   prior family: identity_nonspatial_learned_noise
+#&gt;   prior family: identity_constant_learned_noise
 #&gt;   observations: 100
 #&gt;
 #&gt; Fitted prior
@@ -520,7 +521,7 @@ prior, pass <code>pc.penalty</code> to
 INLA backend.</p>
 <p>If standard errors are unknown, the same family choice carries over
 to <code>eb_smoother()</code> via <code>family = &quot;lgp&quot;</code> or
-<code>family = &quot;matern&quot;</code>, while <code>family = &quot;nonspatial&quot;</code>
+<code>family = &quot;matern&quot;</code>, while <code>family = &quot;constant&quot;</code>
 provides the Gaussian baseline with no spatial structure.</p>
 </div>
 <div id="about-the-link-function" class="section level1">
@@ -549,15 +550,15 @@ fit &lt;- fit_fun(x, s)
 
 head(fit$posterior)
 #&gt;        mean         var second_moment
-#&gt; 1 0.2929102 0.020832308     0.1066287
-#&gt; 2 0.3606443 0.014049990     0.1441143
+#&gt; 1 0.2929102 0.020832307     0.1066287
+#&gt; 2 0.3606443 0.014049989     0.1441143
 #&gt; 3 0.4256257 0.010176678     0.1913339
 #&gt; 4 0.4878544 0.007961750     0.2459636
 #&gt; 5 0.5473304 0.006789422     0.3063600
 #&gt; 6 0.6022705 0.006508761     0.3692385
 fit$fitted_g
 #&gt; $scale
-#&gt; [1] 0.2499391
+#&gt; [1] 0.2499392
 #&gt;
 #&gt; $beta
 #&gt; [1] 0.2929102 0.8224142

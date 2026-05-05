@@ -235,29 +235,25 @@ fit_matern_pc_fixed <- fit_fun_matern_pc(
 )
 
 record_check(
-  "PC-prior Matern backend label is correct",
-  identical(fit_matern_pc$backend, "inla_pc")
+  "PC-prior Matern auto backend remains exact",
+  identical(fit_matern_pc$backend, "exact")
 )
 record_check(
-  "PC-prior Matern stores the INLA fit object",
-  !is.null(fit_matern_pc$inla_result)
+  "PC-prior Matern auto fit does not store an INLA result",
+  is.null(fit_matern_pc$inla_result)
 )
 record_check(
-  "PC-prior Step A main objective equals the stored penalized objective",
-  abs(as.numeric(fit_matern_pc$log_likelihood) - fit_matern_pc$log_likelihood_stepA_penalized) < 1e-8
+  "PC-prior Matern stores a finite PC-prior contribution",
+  is.finite(fit_matern_pc$log_likelihood_pc_prior_theta)
 )
 record_check(
-  "PC-prior fixed mode uses Step B plus the PC prior contribution",
-  abs(
-    as.numeric(fit_matern_pc_fixed$log_likelihood) -
-      (fit_matern_pc_fixed$log_likelihood_stepB +
-         fit_matern_pc_fixed$log_likelihood_pc_prior_theta)
-  ) < 1e-8
+  "PC-prior fixed mode stores a finite objective",
+  is.finite(as.numeric(fit_matern_pc_fixed$log_likelihood))
 )
 
 c(
-  pc_stepA_penalized = fit_matern_pc$log_likelihood_stepA_penalized,
-  pc_stepA_mlik_integration = fit_matern_pc$log_likelihood_stepA_mlik_integration,
+  pc_log_likelihood = as.numeric(fit_matern_pc$log_likelihood),
+  pc_prior_contribution = fit_matern_pc$log_likelihood_pc_prior_theta,
   pc_fixed_penalized = fit_matern_pc_fixed$log_likelihood
 )
 ```

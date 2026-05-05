@@ -80,21 +80,26 @@ s = NULL`, so it can compare a non-negative smooth Matern prior against
 non-negative constant-baseline prior.
 
 The identity link uses the exact Gaussian backend by default. The log link is
-available for positive mean functions and uses the sparse Laplace backend by
-default.
+available for positive mean functions and uses the Fisher Laplace backend by
+default under `backend = "auto"`. Explicit `backend = "laplace"` keeps the
+older observed-Hessian Laplace semantics.
 
 There are multiple Matern backends:
 
-- If `pc.penalty = NULL`, the fitter uses the exact Gaussian EB backend and
-  optimizes the exact marginal likelihood over `(log(range), log(sigma), beta0)`
-  for `link = "identity"`.
-- If `link = "log"`, the fitter uses the sparse Laplace backend by default.
-- For `link = "log"` learned-noise fits, `backend = "auto"` stays on the
-  package Laplace/TMB path. Explicit INLA fits are checked against the package
-  Laplace reference and error if INLA returns a non-comparable mode.
-- Explicit `backend = "inla"` or `backend = "inla_pc"` fits use INLA. For
+- For `link = "identity"`, `backend = "auto"` uses the exact Gaussian EB
+  backend. If `pc.penalty` is supplied, the PC prior contributes to the
+  hyperparameter objective.
+- If `link = "log"`, `backend = "auto"` resolves to `backend =
+  "laplace_fisher"`. Fisher fits keep the same conditional mode as the
+  log-link posterior objective, but use Fisher/Gauss-Newton curvature for the
+  returned posterior approximation and score.
+- Explicit `backend = "laplace"` uses observed-Hessian Laplace semantics.
+  `backend = "laplace_tmb"` remains a compatibility alias for this route.
+- Explicit `backend = "inla"` fits use INLA. The compatibility alias
+  `backend = "inla_pc"` is accepted when `pc.penalty` is supplied, but the
+  returned fit reports the canonical backend label `backend = "inla"`. For
   log-link fits, the primary comparable `log_likelihood` is the package
-  Laplace objective evaluated at the INLA mode.
+  observed-Hessian Laplace objective evaluated at the INLA mode.
 
 # One-Dimensional Example
 
@@ -108,7 +113,6 @@ x_1d <- truth_1d + rnorm(length(locations_1d), sd = s_1d)
 
 fit_fun_1d <- ebnm_Matern_generator(
   locations = locations_1d,
-  backend = "inla",
   link = "log"
 )
 
@@ -128,11 +132,12 @@ lines(locations_1d, truth_1d, col = "firebrick", lwd = 2, lty = 2)
 lines(locations_1d, fit_1d$posterior$mean, col = "navy", lwd = 2)
 ```
 
-# PC-Prior Backend
+# PC-Prior Fits
 
-Supplying `pc.penalty` switches the Matern fitter to an INLA backend. This is
-useful when you want the smoothing hyperparameters to be selected under a PC
-prior rather than under the exact EB objective.
+Supplying `pc.penalty` lets the Matern fitter select smoothing hyperparameters
+under a PC prior. With `link = "identity"` and `backend = "auto"`, this remains
+on the package exact Gaussian backend. Use explicit `backend = "inla"` when an
+independent INLA/SPDE comparison is needed.
 
 ```{r}
 fit_fun_pc <- ebnm_Matern_generator(
@@ -159,13 +164,13 @@ pc_breakdown$recorded_minus_matched_exact
 ```{r}
 plot(locations_1d, x_1d, pch = 16, cex = 0.45, col = "grey55",
      xlab = "location", ylab = "x",
-     main = "Exact EB and PC-prior Matern fits")
+     main = "Fisher Laplace and exact PC-prior Matern fits")
 lines(locations_1d, truth_1d, col = "firebrick", lwd = 2, lty = 1)
 lines(locations_1d, fit_1d$posterior$mean, col = "navy", lwd = 2, lty = 2)
 lines(locations_1d, fit_pc$posterior$mean, col = "darkorange3", lwd = 2, lty = 3)
 legend(
   "topright",
-  legend = c("truth", "exact EB", "INLA PC prior"),
+  legend = c("truth", "Fisher Laplace", "exact PC prior"),
   col = c("firebrick", "navy", "darkorange3"),
   lty = c(1, 2, 3),
   lwd = c(2, 2, 2),
@@ -175,8 +180,9 @@ legend(
 
 # Fixed Hyperparameters and Fixed Intercept
 
-When `fix_g = TRUE`, the Matern smoother treats both the smoothing
-hyperparameters and the intercept as fixed.
+When `fix_g = TRUE`, the Matern smoother fixes the smoothing hyperparameters
+from `g_init`. Supply `beta_fixed` separately when the intercept should also be
+fixed.
 
 ```{r}
 set.seed(99)
@@ -201,26 +207,10 @@ lines(locations_1d, truth_1d, col = "firebrick", lwd = 2, lty = 2)
 lines(locations_1d, fit_fixed$posterior$mean, col = "darkgreen", lwd = 2)
 ```
 
-If you supply both `fix_g = TRUE` and `pc.penalty`, the returned
-`log_likelihood` is a penalized pseudo-objective:
-
-```text
-Step B conditional marginal likelihood + log PC prior on (log(range), log(sigma)).
-```
-
-```{r}
-fit_pc_fixed <- fit_fun_pc(
-  x_1d,
-  s_1d,
-  g_init = Matern(theta = log(1.2), sigma = 0.7),
-  fix_g = TRUE,
-  beta_fixed = 0.1
-)
-
-fit_pc_fixed$log_likelihood
-fit_pc_fixed$log_likelihood_stepB
-fit_pc_fixed$log_likelihood_pc_prior_theta
-```
+Range/sigma fixing is not supported by the INLA backend. If `pc.penalty` is
+supplied and you need fixed Matern hyperparameters, fit an unpenalized package
+backend for that fixed-parameter score instead of requesting an INLA PC-prior
+fit.
 
 # Two-Dimensional Example
 
