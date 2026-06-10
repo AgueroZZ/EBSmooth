@@ -23,8 +23,8 @@ small fixed number of pseudo-Gaussian exact Matern updates.
   `noise_scale = 1 / pmax(h'(eta), g_floor)`, so scalar `noise_sd` remains the
   optimized outer noise parameter.
 - Keep PC priors on scalar range, sigma, and noise parameters.
-- Use `pql_inner_iter = 3` internally by default and do not expose it as a
-  public API yet.
+- Expose `pql_inner_iter` as a public Matern Fisher-PQL tuning argument in
+  `ebnm_Matern_generator()` and `eb_smoother()`, with default `3`.
 - Route `backend = "auto"` to `fisher_pql` for log and softplus Matern fits;
   keep identity-link auto routing on the exact Gaussian backend.
 - Store the pseudo Step A objective separately from the final score.
@@ -38,8 +38,8 @@ small fixed number of pseudo-Gaussian exact Matern updates.
 - Test pseudo-response algebra for log and softplus links.
 - Test that the exact one-step PQL mode still matches an R sparse linear solve
   at fixed hyperparameters when `pql_inner_iter = 1` is requested internally.
-- Test that the default Fisher-PQL path reports three internal pseudo-Gaussian
-  updates.
+- Test that the default Fisher-PQL path reports three pseudo-Gaussian updates
+  and that public `pql_inner_iter` overrides are respected.
 - Test that Fisher-PQL wrappers no longer use the TMB `model_id = 2` Step A
   path and report `laplace_implementation = "exact_fisher_pql"`.
 - Test known-noise `ebnm_Matern_generator()` and learned-noise `eb_smoother()`

@@ -25,7 +25,8 @@ pseudo-Gaussian Matern machinery for Fisher-PQL Step A.
   to the exact learned-noise solver.
 - Removed the active TMB Fisher-PQL Step A route and the `model_id = 2` TMB
   template block.
-- Kept `pql_inner_iter` internal and unexposed; the default is now three
+- Exposed `pql_inner_iter` as a public Matern Fisher-PQL control in
+  `ebnm_Matern_generator()` and `eb_smoother()`; the default is three
   pseudo-Gaussian exact Matern updates.
 - Changed the primary likelihood semantics to
   `fisher_laplace_at_fisher_pql_mode_<beta_mode>`. The reported
@@ -156,3 +157,32 @@ Validation for this follow-up:
   interrupted after the existing INLA/inlabru portion produced continuous
   `Hessian failed but no better mode found` diagnostics rather than reaching a
   testthat summary in reasonable time.
+
+## Public `pql_inner_iter` Control
+
+Exposed the Fisher-PQL iteration count as public `pql_inner_iter` in both
+`ebnm_Matern_generator()` and `eb_smoother()`. The default remains `3`, matching
+the softplus `n = 1000` benchmark above. The argument is validated as a positive
+integer and is only used by the Matern `backend = "fisher_pql"` path, including
+`backend = "auto"` when log or softplus links resolve to Fisher-PQL.
+
+Validation for this follow-up is tracked with the `0.2.4` package update.
+
+Validation for the public-control follow-up:
+
+- Parsed `EBSmoothr/R/02_Matern.R`, `EBSmoothr/R/03_eb_smoother.R`, and
+  `EBSmoothr/tests/testthat/test-matern.R`.
+- Ran a targeted non-INLA check confirming the default `pql_inner_iter = 3`,
+  public override to `2` for both known-noise `ebnm_Matern_generator()` and
+  learned-noise `eb_smoother()`, and validation errors for non-positive
+  values.
+- Regenerated roxygen documentation with `devtools::document("EBSmoothr")` and
+  checked the updated Rd files.
+- Reinstalled `EBSmoothr` version `0.2.4` with
+  `R CMD INSTALL -l /Users/ziangzhang/Library/R/arm64/4.5/library EBSmoothr`.
+- Built `EBSmoothr_0.2.4.tar.gz` with
+  `R CMD build --no-build-vignettes EBSmoothr`.
+- Ran `R CMD check --no-manual --no-build-vignettes --no-tests
+  EBSmoothr_0.2.4.tar.gz`: completed with `Status: 1 NOTE`. The remaining
+  NOTE is the existing `unlockBinding(default_name, ns)` safety note in
+  `R/02_Matern.R`.
