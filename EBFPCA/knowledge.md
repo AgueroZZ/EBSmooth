@@ -1,6 +1,6 @@
 # EB-FPCA Knowledge Document
 
-Last updated: 2026-06-08
+Last updated: 2026-06-11
 
 ## Purpose
 
@@ -166,6 +166,72 @@ can sparsify under controlled missingness.
    choices can dominate the method comparison.
 4. Keep FAST, Boland CPE, Goldsmith multilevel, and Sang informative-time
    setups as later stress tests rather than MVP benchmarks.
+
+### Local Supplement Data Status
+
+The current local supplement file is
+`EBFPCA/data/biom12457-sup-0002-suppdatacode.zip`. It is the Lin et al. iFPCA
+supplement and contains MATLAB code for EEG, weather, two simulations, and an
+included copy of the MATLAB FDA toolbox.
+
+The first R-side exploration script is
+`EBFPCA/scripts/explore_fpca_weather.R`. It reads the Canadian weather
+temperature data directly from the zip member
+`iFPCAcodes/fdaM/examples/weather/temperature.csv`, then compares:
+
+- raw grid PCA via base R `prcomp`;
+- smoothed B-spline FPCA via `fda::pca.fd`;
+- smoothed Fourier FPCA via `fda::pca.fd`;
+- optional `fdapace::FPCA`, if `fdapace` is installed;
+- optional `refund::fpca.sc`, if `refund` is installed.
+
+The first run wrote outputs to
+`EBFPCA/results/fpca_weather_exploration/`. On the current machine, `fda` was
+installed and ran successfully. After installing the legitimate CRAN packages
+`fdapace` and `refund`, `fdapace::FPCA` and `refund::fpca.sc` also ran
+successfully. The fitted methods agreed closely on the first three components:
+PC1 explained about 88-90 percent of variation, PC2 about 8.5 percent, and PC3
+about 2 percent. PACE was nearly identical to raw grid PCA on this dense
+regular dataset; this is expected because the weather data are fully observed
+on a common daily grid.
+
+The interpretable-FPCA replication script is
+`EBFPCA/scripts/replicate_lin_ifpca_weather.R`. It translates the core MATLAB
+supplement algorithm for the weather analysis into R:
+
+- B-spline representation of centered weather curves;
+- roughness-penalized generalized eigenproblem for the regularized FPCA
+  comparator;
+- greedy L0 basis support selection for iFPCA;
+- 10-fold CV kappa selection using the supplement's one-standard-error-style
+  rule;
+- PACE overlay through `fdapace::FPCA`.
+
+The main replication outputs are in
+`EBFPCA/results/lin_ifpca_weather_replication/`. The current recommended run
+uses `nbasis = 181`, `gamma = 3000`, and 10 CV folds. It is an approximate R
+replication, not a bit-for-bit MATLAB rerun, because modern R `fda` and the
+MATLAB FDA toolbox differ in high-dimensional basis setup and numerical
+solvers. Still, it reproduces the qualitative paper message: regularized FPCA
+and PACE yield smooth global eigenfunctions, while iFPCA truncates components
+to localized active intervals. In the current run, the selected active basis
+counts are 103, 60, and 13 for PC1-PC3; the detected active support intervals
+are approximately day 1.5-128.5 and 271.5-363.5 for PC1, day 123.5-181.5 and
+195.5-275.5 for PC2, and day 95.5-126.5 for PC3.
+
+The first EBM/F data-loading scaffold is `EBFPCA/scripts/fit_ebmf.R`. It reads
+the same supplement weather temperature data and creates:
+
+- `Y`: a 35 locations x 365 days matrix for matrix factorization;
+- `Y_centered`: `Y` after subtracting the daily mean across locations;
+- `weather_temperature_day_by_location`: the original 365 days x 35 locations
+  matrix;
+- `weather_long`: a long observation table with location, day, and
+  temperature;
+- `observed_mask`: a logical matrix for missingness-aware matrix methods.
+
+Running the script writes reusable matrix inputs to
+`EBFPCA/results/ebmf_weather_matrix/`.
 
 ## Paper-Level Takeaways
 
@@ -385,6 +451,13 @@ When this document changes, update:
 
 ## Update History
 
+- 2026-06-11: Added `fit_ebmf.R` weather-data loading and matrix-format
+  scaffold for EBM/F experiments.
+- 2026-06-10: Added local supplement-data status and the first R weather-data
+  FPCA exploration script/results.
+- 2026-06-10: Installed CRAN `fdapace` and `refund`, reran PACE/refund
+  baselines, and added an R translation of the Lin et al. weather iFPCA
+  replication workflow.
 - 2026-06-08: Added open-data and simulation-resource ranking for benchmark
   planning, separating immediate datasets from code-only or caveated resources.
 - 2026-06-08: Added software inventory distinguishing directly usable R paths
