@@ -1,10 +1,13 @@
 # EBSmooth
 
 `EBSmooth` is the research repository for the `EBSmoothr` R package and its
-supporting validation materials.
+supporting validation materials. In addition to continuous smoothers, the
+package includes an exact symmetric binary Markov normal-means solver for
+transcript-state problems with intron/exon states encoded as `0`/`1`. Its
+`flip_prob = 0.5` limit is the exact equal-probability iid baseline.
 
 The package implements empirical-Bayes smoothers for Gaussian means with two
-prior families:
+continuous prior families:
 
 - L-GP smoothers with TMB and Fisher-Laplace log-link backends for
   one-dimensional problems.
@@ -13,6 +16,8 @@ prior families:
   problems, including log-link fits for positive mean functions. Log-link
   Matern and L-GP fits use Fisher Laplace by default under `backend = "auto"`;
   explicit `backend = "laplace"` keeps observed-Hessian Laplace semantics.
+- Symmetric binary Markov smoothing for ordered binary states, with exact
+  forward-backward inference conditional on the transition probability.
 
 The package source lives in [`EBSmoothr/`](EBSmoothr), while longer internal
 notes, validation studies, and collaborator-facing vignette drafts live under
@@ -57,7 +62,7 @@ devtools::load_all("EBSmoothr")
 
 ## Choosing the Main Entry Point
 
-`EBSmoothr` now has two collaborator-facing workflows:
+`EBSmoothr` has three collaborator-facing workflows:
 
 - If the observation standard errors `s` are known, use the
   `ebnm`-compatible generator interfaces:
@@ -67,6 +72,8 @@ devtools::load_all("EBSmoothr")
 - If the observation standard errors are unknown, use `eb_smoother()` with
   `s = NULL` to fit an empirical-Bayes smoother that learns one common
   observation noise SD.
+- For ordered binary states with known `s`, use `ebnm_binary_markov()` with a
+  fixed transition probability or an empirical-Bayes numerical search.
 
 `eb_smoother()` also supports known `s`, but the top-level documentation below
 focuses on the learned-noise case. For `ebnm`, `flashier`, or `ebmf`
@@ -121,6 +128,59 @@ sigma_fixed_fit <- eb_smoother(
   fix_params = "sigma"
 )
 ```
+
+### Known `s`: symmetric binary Markov model
+
+For ordered transcript positions, `ebnm_binary_markov()` replaces the iid prior
+with the symmetric transition matrix
+
+```text
+       next state
+       0       1
+0    1-q       q
+1      q     1-q
+```
+
+where `q` is the probability of changing state between adjacent positions. The
+initial intron/exon probabilities are both `0.5`, so every prior marginal also
+remains `0.5`. The expected run length is `1 / q`, and `q = 0.5` reduces exactly
+to the iid Bernoulli(0.5) baseline because both transition rows then equal
+`(0.5, 0.5)`.
+
+By default, the solver numerically searches for `q` using exact marginal-
+likelihood evaluations:
+
+```r
+x <- c(0.05, 0.2, 0.55, 0.9, 1.1)
+s <- rep(0.2, length(x))
+
+markov_fit <- ebnm_binary_markov(x, s)
+
+markov_fit$fitted_g
+markov_fit$posterior[, c("prob_zero", "prob_one")]
+markov_fit$posterior_transitions
+markov_fit$viterbi_path
+```
+
+Supply `flip_prob` to hold the transition probability fixed:
+
+```r
+fixed_markov_fit <- ebnm_binary_markov(x, s, flip_prob = 0.05)
+```
+
+Use the same solver for the equal-probability iid reference:
+
+```r
+iid_fit <- ebnm_binary_markov(x, s, flip_prob = 0.5)
+```
+
+Conditional on a fixed `q`, inference and marginal-likelihood evaluation use an
+exact log-space forward-backward algorithm. The default empirical-Bayes search
+uses `stats::optimize()` and separately evaluates both interval endpoints. The
+likelihood need not be concave, so this numerical search is not guaranteed to
+find the global MLE. The current symmetric model assigns the same expected run
+length to introns and exons; an asymmetric transition model is a planned
+biological extension.
 
 ### Unknown `s`: empirical-Bayes smoothing
 
