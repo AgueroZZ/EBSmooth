@@ -1,6 +1,7 @@
 # EBSmooth
 
-`EBSmooth` is the research repository for the `EBSmoothr` R package and its
+`EBSmooth` is the research and writing workspace for the
+[`EBSmoothr`](https://github.com/AgueroZZ/EBSmoothr) R package and its
 supporting validation materials. In addition to continuous smoothers, the
 package includes an exact symmetric binary Markov normal-means solver for
 transcript-state problems with intron/exon states encoded as `0`/`1`. Its
@@ -19,13 +20,15 @@ continuous prior families:
 - Symmetric binary Markov smoothing for ordered binary states, with exact
   forward-backward inference conditional on the transition probability.
 
-The package source lives in [`EBSmoothr/`](EBSmoothr), while longer internal
+The canonical package source is maintained in the standalone
+[`AgueroZZ/EBSmoothr`](https://github.com/AgueroZZ/EBSmoothr) repository and is
+included here as the [`EBSmoothr/`](EBSmoothr) git submodule. Longer internal
 notes, validation studies, and collaborator-facing vignette drafts live under
 [`internal/`](internal).
 
 ## Repository Layout
 
-- `EBSmoothr/`: installable R package source.
+- `EBSmoothr/`: submodule pointing to the canonical installable R package.
 - `internal/math/`: mathematical notes that explain the modeling targets.
 - `internal/simulations/`: simulation studies and benchmark scripts.
 - `internal/vignettes/`: collaborator-focused walkthroughs and rendered
@@ -33,25 +36,32 @@ notes, validation studies, and collaborator-facing vignette drafts live under
 - `plan/`: implementation plans for major updates.
 - `log/`: change logs for major updates.
 
+Clone this research workspace together with the package submodule using:
+
+```sh
+git clone --recurse-submodules https://github.com/AgueroZZ/EBSmooth.git
+```
+
+For an existing clone, initialize the package submodule with:
+
+```sh
+git submodule update --init --recursive
+```
+
 ## Installation
 
 The package depends on `INLA`, which is distributed through the R-INLA
-repository rather than CRAN. Install dependencies first, then install the
-package from source.
+repository rather than CRAN. Copy and paste the following block into an R
+console:
 
 ```r
-install.packages(
-  "INLA",
-  repos = c(
-    getOption("repos"),
-    INLA = "https://inla.r-inla-download.org/R/stable"
-  )
+install.packages("pak")
+
+pak::repo_add(
+  INLA = "https://inla.r-inla-download.org/R/stable"
 )
 
-install.packages(c("TMB", "Matrix", "numDeriv", "LaplacesDemon", "ebnm"))
-install.packages("remotes")
-
-remotes::install_local("EBSmoothr")
+pak::pak("AgueroZZ/EBSmoothr")
 ```
 
 For interactive development from this repository, use:

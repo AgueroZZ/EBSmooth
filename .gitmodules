@@ -1,0 +1,3 @@
+[submodule "EBSmoothr"]
+	path = EBSmoothr
+	url = https://github.com/AgueroZZ/EBSmoothr.git

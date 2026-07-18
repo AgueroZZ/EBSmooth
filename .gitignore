@@ -13,3 +13,4 @@ EBSmoothr/src/*.dll
 EBSmoothr/src/*.dylib
 EBSmoothr/src/*.rds
 .positai
+/.claude/
